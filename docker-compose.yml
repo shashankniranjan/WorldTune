@@ -1,0 +1,124 @@
+version: "3.9"
+
+# "Real" deployment topology. Local dev/tests use SQLite and run modules
+# directly (see README.md); this compose file documents/exercises the
+# Postgres+pgvector story for a production-like environment.
+#
+# Runs at ZERO COST out of the box: `cp .env.example .env && docker compose up`
+# needs no API key. The worker polls the free keyless feeds selected by
+# EVENT_PROVIDERS (default gdelt,usgs,eonet,gdacs) and WORLDPULSE_MODE
+# defaults to `free`, which refuses every paid provider.
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: worldpulse
+      POSTGRES_PASSWORD: worldpulse
+      POSTGRES_DB: worldpulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - worldpulse_pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://worldpulse:worldpulse@postgres:5432/worldpulse
+      # Zero-cost defaults; override in .env if you have optional free keys.
+      WORLDPULSE_MODE: ${WORLDPULSE_MODE:-free}
+      EVENT_PROVIDERS: ${EVENT_PROVIDERS:-gdelt,usgs,eonet,gdacs}
+      AI_CLASSIFIER: ${AI_CLASSIFIER:-rules}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: streamlit run apps/dashboard/app.py --server.address 0.0.0.0 --server.port 8501
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://worldpulse:worldpulse@postgres:5432/worldpulse
+      # Zero-cost defaults; override in .env if you have optional free keys.
+      WORLDPULSE_MODE: ${WORLDPULSE_MODE:-free}
+      EVENT_PROVIDERS: ${EVENT_PROVIDERS:-gdelt,usgs,eonet,gdacs}
+      AI_CLASSIFIER: ${AI_CLASSIFIER:-rules}
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m worldpulse.ingestion.scheduler
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://worldpulse:worldpulse@postgres:5432/worldpulse
+      # Zero-cost defaults; override in .env if you have optional free keys.
+      WORLDPULSE_MODE: ${WORLDPULSE_MODE:-free}
+      EVENT_PROVIDERS: ${EVENT_PROVIDERS:-gdelt,usgs,eonet,gdacs}
+      AI_CLASSIFIER: ${AI_CLASSIFIER:-rules}
+    depends_on:
+      - postgres
+
+  # --- WorldTune -----------------------------------------------------------
+  # A separate product sharing this repo and this Postgres instance, on its own
+  # database (worldtune) so the two schemas never collide. It imports nothing
+  # from worldpulse.* and can be started on its own:
+  #     docker compose up worldtune-api
+  #
+  # Runs at ZERO COST with no key: DEMO_MODE defaults to true, which selects
+  # the deterministic seeded adapters and makes no outbound call at all.
+  worldtune-api:
+    build:
+      context: ./worldtune
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment:
+      # pgvector is available on this image; see app/models/base.py for the
+      # Vector(128) column the embeddings would use on Postgres.
+      DATABASE_URL: postgresql+psycopg2://worldpulse:worldpulse@postgres:5432/worldtune
+      DEMO_MODE: ${WORLDTUNE_DEMO_MODE:-true}
+      AUTO_SEED: ${WORLDTUNE_AUTO_SEED:-true}
+      # All optional. Unset => that provider reports available=false and is
+      # skipped; the app still boots and the dashboard still populates.
+      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
+      ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+    ports:
+      - "8100:8000"
+    depends_on:
+      - postgres
+
+  # The WorldTune Next.js frontend. NEXT_PUBLIC_API_BASE_URL is what the
+  # *browser* calls, so it points at the host-published API port (8100), not at
+  # the compose-internal service name. Local dev without compose runs the API on
+  # 8090 (see worldtune/frontend/.env.example).
+  worldtune-web:
+    build:
+      context: ./worldtune/frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${WORLDTUNE_API_BASE_URL:-http://localhost:8100}
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${WORLDTUNE_API_BASE_URL:-http://localhost:8100}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - worldtune-api
+
+volumes:
+  worldpulse_pgdata:

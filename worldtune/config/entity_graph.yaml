@@ -1,0 +1,222 @@
+# WorldTune entity taxonomy (spec section 28).
+#
+# This is a *configuration-based* entity graph, not a graph database. Each
+# node lists its aliases (for text matching) and its edges (broader concepts,
+# related technologies, sectors, tickers). Relevance propagation walks these
+# edges with a decay factor, which is how "NVIDIA earnings" ends up mattering
+# to a persona whose interest is spelled "AI infrastructure".
+#
+# Editing this file changes the taxonomy. No code change required.
+
+decay: 0.6            # relevance multiplier per hop
+max_hops: 3
+
+nodes:
+  # --- Companies / tickers -------------------------------------------------
+  nvidia:
+    label: NVIDIA
+    type: company
+    aliases: [nvidia, nvda, "nvidia corp"]
+    tickers: [NVDA]
+    edges: [ai, semiconductors, technology-stocks, cuda]
+
+  microsoft:
+    label: Microsoft
+    type: company
+    aliases: [microsoft, msft, azure]
+    tickers: [MSFT]
+    edges: [ai, cloud, technology-stocks, azure-platform]
+
+  google:
+    label: Google
+    type: company
+    aliases: [google, alphabet, googl, "google cloud", gcp]
+    tickers: [GOOGL]
+    edges: [ai, cloud, technology-stocks, bigquery]
+
+  amd:
+    label: AMD
+    type: company
+    aliases: [amd, "advanced micro devices"]
+    tickers: [AMD]
+    edges: [semiconductors, ai, technology-stocks]
+
+  databricks:
+    label: Databricks
+    type: company
+    aliases: [databricks, "delta lake", "unity catalog", mosaicml]
+    edges: [data-engineering, spark, lakehouse, ai-data-platform]
+
+  snowflake:
+    label: Snowflake
+    type: company
+    aliases: [snowflake, snow]
+    tickers: [SNOW]
+    edges: [data-engineering, data-warehouse, ai-data-platform]
+
+  openai:
+    label: OpenAI
+    type: company
+    aliases: [openai, chatgpt, "gpt-4", "gpt-5"]
+    edges: [ai, llm, agent-infrastructure]
+
+  anthropic:
+    label: Anthropic
+    type: company
+    aliases: [anthropic, claude]
+    edges: [ai, llm, agent-infrastructure]
+
+  confluent:
+    label: Confluent
+    type: company
+    aliases: [confluent, "confluent cloud"]
+    edges: [kafka, data-engineering, streaming]
+
+  # --- Assets --------------------------------------------------------------
+  bitcoin:
+    label: Bitcoin
+    type: asset
+    aliases: [bitcoin, btc, "btc-usd"]
+    tickers: [BTC]
+    edges: [crypto, macro-liquidity]
+
+  ethereum:
+    label: Ethereum
+    type: asset
+    aliases: [ethereum, eth, "eth-usd", ether]
+    tickers: [ETH]
+    edges: [crypto, macro-liquidity]
+
+  nasdaq-etf:
+    label: Nasdaq 100 ETF
+    type: asset
+    aliases: [qqq, "nasdaq 100", nasdaq]
+    tickers: [QQQ]
+    edges: [technology-stocks, macro-liquidity]
+
+  # --- Sectors / concepts --------------------------------------------------
+  crypto:
+    label: Crypto
+    type: sector
+    aliases: [crypto, cryptocurrency, "digital assets"]
+    edges: [technology]
+
+  semiconductors:
+    label: Semiconductors
+    type: sector
+    aliases: [semiconductor, semiconductors, chips, gpu, gpus]
+    edges: [technology-stocks, ai-infrastructure]
+
+  technology-stocks:
+    label: Technology stocks
+    type: sector
+    aliases: ["tech stocks", "technology stocks", "big tech"]
+    edges: [technology]
+
+  technology:
+    label: Technology
+    type: sector
+    aliases: [technology, tech]
+    edges: []
+
+  ai:
+    label: AI
+    type: topic
+    aliases: [ai, "artificial intelligence", "machine learning", ml, genai, "generative ai"]
+    edges: [technology, ai-infrastructure, llm]
+
+  ai-infrastructure:
+    label: AI infrastructure
+    type: topic
+    aliases: ["ai infrastructure", "ai infra", "inference infrastructure", "gpu cluster"]
+    edges: [ai, cloud, data-engineering]
+
+  cuda:
+    label: CUDA
+    type: technology
+    aliases: [cuda, "cuda toolkit"]
+    edges: [ai-infrastructure, semiconductors]
+
+  llm:
+    label: LLM systems
+    type: topic
+    aliases: [llm, llms, "large language model", "llm systems", rag, "retrieval augmented generation"]
+    edges: [ai, agent-infrastructure, ai-data-platform]
+
+  agent-infrastructure:
+    label: Agent infrastructure
+    type: topic
+    aliases: [agents, "agent infrastructure", "agent framework", langgraph, "tool use"]
+    edges: [llm, ai]
+
+  data-engineering:
+    label: Data Engineering
+    type: topic
+    aliases: ["data engineering", "data platform", etl, elt, "data pipeline", "data pipelines"]
+    edges: [technology, ai-data-platform, distributed-systems]
+
+  ai-data-platform:
+    label: AI Data Platform
+    type: topic
+    aliases: ["ai data platform", "feature store", "vector database", "ml platform"]
+    edges: [data-engineering, ai]
+
+  lakehouse:
+    label: Lakehouse
+    type: technology
+    aliases: [lakehouse, "data lakehouse", iceberg, "apache iceberg", hudi]
+    edges: [data-engineering, ai-data-platform]
+
+  data-warehouse:
+    label: Data warehouse
+    type: technology
+    aliases: ["data warehouse", warehouse, redshift, bigquery]
+    edges: [data-engineering]
+
+  spark:
+    label: Spark
+    type: technology
+    aliases: [spark, "apache spark", pyspark]
+    edges: [data-engineering, distributed-systems]
+
+  kafka:
+    label: Kafka
+    type: technology
+    aliases: [kafka, "apache kafka"]
+    edges: [data-engineering, streaming, distributed-systems]
+
+  streaming:
+    label: Streaming
+    type: topic
+    aliases: [streaming, "stream processing", flink, "apache flink"]
+    edges: [data-engineering, distributed-systems]
+
+  distributed-systems:
+    label: Distributed systems
+    type: topic
+    aliases: ["distributed systems", "distributed computing", consensus]
+    edges: [technology]
+
+  cloud:
+    label: Cloud
+    type: topic
+    aliases: [cloud, aws, gcp, azure, kubernetes, k8s]
+    edges: [technology, ai-infrastructure]
+
+  bigquery:
+    label: BigQuery
+    type: technology
+    aliases: [bigquery, "big query"]
+    edges: [data-warehouse, cloud]
+
+  azure-platform:
+    label: Azure
+    type: technology
+    aliases: [azure, "azure data factory", fabric]
+    edges: [cloud]
+
+  macro-liquidity:
+    label: Macro liquidity
+    type: topic
+    aliases: ["interest rate", "interest rates", "federal reserve", fed, inflation, cpi, "rate cut"]
+    edges: []

@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorldPulse Architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#eef1f4; --surface:#ffffff; --surface-2:#f5f7f9;
+    --ink:#161c24; --muted:#5b6673; --line:#d6dde3; --line-strong:#b7c1c9;
+    --accent:#0e7f83; --accent-ink:#ffffff;
+    --free:#2f8f5f; --free-bg:#e6f3ec;
+    --keyed:#a9760f; --keyed-bg:#f7eeda;
+    --paid:#767f8c; --paid-bg:#eef0f2;
+    --wall:#c23b4b;
+    --shadow: 0 1px 2px rgba(20,30,40,.06), 0 6px 18px rgba(20,30,40,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#11151a; --surface:#171c22; --surface-2:#1c222a;
+      --ink:#e8edf1; --muted:#95a1ac; --line:#2b333c; --line-strong:#3a4450;
+      --accent:#4fd3d1; --accent-ink:#0b1315;
+      --free:#5fce93; --free-bg:#173427;
+      --keyed:#e3b356; --keyed-bg:#3a2f13;
+      --paid:#9aa4b0; --paid-bg:#242a31;
+      --wall:#ef7686;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11151a; --surface:#171c22; --surface-2:#1c222a;
+    --ink:#e8edf1; --muted:#95a1ac; --line:#2b333c; --line-strong:#3a4450;
+    --accent:#4fd3d1; --accent-ink:#0b1315;
+    --free:#5fce93; --free-bg:#173427;
+    --keyed:#e3b356; --keyed-bg:#3a2f13;
+    --paid:#9aa4b0; --paid-bg:#242a31;
+    --wall:#ef7686;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    line-height:1.55;
+  }
+  .page{ max-width:1080px; margin:0 auto; padding:56px 28px 80px; }
+  .mono{ font-family:"IBM Plex Mono", ui-monospace, monospace; }
+
+  header.masthead{ margin-bottom:40px; }
+  .eyebrow{
+    font-family:"IBM Plex Mono", monospace; font-size:12px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--accent); font-weight:600;
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  h1{
+    font-size:clamp(28px,4vw,40px); font-weight:700; letter-spacing:-.01em;
+    margin:10px 0 12px; text-wrap:balance;
+  }
+  .lede{ font-size:16px; color:var(--muted); max-width:66ch; }
+
+  section{ margin-top:56px; }
+  .section-head{ display:flex; align-items:baseline; gap:14px; margin-bottom:6px; flex-wrap:wrap; }
+  .section-head h2{ font-size:22px; font-weight:700; margin:0; }
+  .section-head .tag{
+    font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--muted);
+    border:1px solid var(--line); padding:2px 8px; border-radius:100px;
+  }
+  .claim{ color:var(--muted); max-width:70ch; margin:8px 0 24px; font-size:15px; }
+  .claim strong{ color:var(--ink); font-weight:600; }
+
+  figure{ margin:0; }
+  .diagram-frame{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:18px 18px 14px; box-shadow:var(--shadow); overflow-x:auto;
+  }
+  svg.arch{ display:block; width:100%; height:auto; min-width:640px; }
+  figcaption{
+    margin-top:12px; font-size:13px; color:var(--muted); max-width:78ch;
+  }
+  figcaption .mono{ font-size:12px; }
+
+  .legend{
+    display:flex; gap:18px; flex-wrap:wrap; margin:14px 0 28px;
+    font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--muted);
+  }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .swatch{ width:11px; height:11px; border-radius:3px; display:inline-block; }
+
+  footer{
+    margin-top:64px; padding-top:20px; border-top:1px solid var(--line);
+    font-size:13px; color:var(--muted);
+  }
+  footer .mono{ color:var(--ink); }
+
+  text{ font-family:"IBM Plex Sans", sans-serif; fill:var(--ink); }
+  text.mono{ font-family:"IBM Plex Mono", monospace; }
+  text.muted{ fill:var(--muted); }
+  text.small{ font-size:11px; }
+  .stroke-line{ stroke:var(--line-strong); }
+  .stroke-muted{ stroke:var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow"><span class="dot"></span> worldpulse / docs / architecture</div>
+    <h1>Two views of the same pipeline</h1>
+    <p class="lede">
+      The system-context view (HLD) shows which external feeds WorldPulse trusts and
+      where the free/paid decision actually gets enforced. The data-layer view (LLD)
+      shows the one rule the whole prediction engine depends on: nothing timestamped
+      after <span class="mono">as_of</span> is ever visible to a prediction being made
+      at <span class="mono">as_of</span>.
+    </p>
+  </header>
+
+  <!-- ======================= FIGURE 1 : HLD ======================= -->
+  <section>
+    <div class="section-head">
+      <h2>1. System context — who feeds WorldPulse, and where the gate sits</h2>
+      <span class="tag">docs/HLD.md &sect;3</span>
+    </div>
+    <p class="claim">
+      Every external source is <strong>optional and interchangeable</strong>; the
+      only thing downstream code ever sees is a <span class="mono">WorldEvent</span>.
+      The mechanism worth seeing is the <span class="mono">registry.py</span> gate:
+      it is the single place that decides "does this source run at all," based on
+      whether a key is present and whether <span class="mono">WORLDPULSE_MODE=free</span>
+      allows it — so a missing <span class="mono">WORLDMONITOR_API_KEY</span> is a
+      normal, logged skip, never a crash.
+    </p>
+
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--free)"></i> free, no key</span>
+      <span><i class="swatch" style="background:var(--keyed)"></i> free, needs registration key</span>
+      <span><i class="swatch" style="background:var(--paid)"></i> optional, paid</span>
+    </div>
+
+    <figure>
+      <div class="diagram-frame">
+        <svg class="arch" viewBox="0 0 1040 470" role="img"
+             aria-label="External event and market sources connect to a registry gate that checks each provider's is_available() and the WORLDPULSE_MODE, admitting only permitted providers into the canonical WorldEvent model, which then flows through classify+dedup, storage, similarity+prediction, evaluation, and out through the API to the dashboard and investigator.">
+
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- column labels -->
+          <text x="150" y="26" text-anchor="middle" class="mono small muted">EXTERNAL SOURCES</text>
+          <text x="430" y="26" text-anchor="middle" class="mono small muted">GATE</text>
+          <text x="660" y="26" text-anchor="middle" class="mono small muted">WORLDPULSE PIPELINE</text>
+          <text x="960" y="26" text-anchor="middle" class="mono small muted">CONSUMERS</text>
+
+          <!-- source boxes -->
+          <g>
+            <rect x="30" y="42" width="240" height="46" rx="9" fill="var(--free-bg)" stroke="var(--free)"/>
+            <text x="48" y="61" class="mono" font-size="12.5" font-weight="600">GDELT · USGS · EONET · GDACS</text>
+            <text x="48" y="77" class="mono small" fill="var(--free)">FREE · no key · default set</text>
+          </g>
+
+          <g>
+            <rect x="30" y="100" width="240" height="46" rx="9" fill="var(--keyed-bg)" stroke="var(--keyed)"/>
+            <text x="48" y="119" class="mono" font-size="12.5" font-weight="600">NASA FIRMS · ACLED</text>
+            <text x="48" y="135" class="mono small" fill="var(--keyed)">FREE · registration key required</text>
+          </g>
+
+          <g>
+            <rect x="30" y="158" width="240" height="46" rx="9" fill="var(--paid-bg)" stroke="var(--paid)" stroke-dasharray="5,4"/>
+            <text x="48" y="177" class="mono" font-size="12.5" font-weight="600">World Monitor API</text>
+            <text x="48" y="193" class="mono small" fill="var(--paid)">PAID · optional · excluded by default</text>
+          </g>
+
+          <g>
+            <rect x="30" y="222" width="240" height="46" rx="9" fill="var(--surface-2)" stroke="var(--line-strong)"/>
+            <text x="48" y="241" class="mono" font-size="12.5" font-weight="600">FRED · EIA</text>
+            <text x="48" y="257" class="mono small muted">context/feature series, not events</text>
+          </g>
+
+          <g>
+            <rect x="30" y="280" width="240" height="46" rx="9" fill="var(--free-bg)" stroke="var(--free)"/>
+            <text x="48" y="299" class="mono" font-size="12.5" font-weight="600">Binance · Stooq · Synthetic</text>
+            <text x="48" y="315" class="mono small" fill="var(--free)">market data — bars, not events</text>
+          </g>
+
+          <!-- registry gate -->
+          <rect x="352" y="150" width="156" height="88" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="430" y="180" text-anchor="middle" font-weight="700" font-size="13">registry.py</text>
+          <text x="430" y="198" text-anchor="middle" class="mono small muted">is_available()?</text>
+          <text x="430" y="213" text-anchor="middle" class="mono small muted">mode allows it?</text>
+          <text x="430" y="228" text-anchor="middle" class="mono small" fill="var(--wall)">skip, don't crash</text>
+
+          <!-- arrows source -> gate -->
+          <path class="stroke-line" d="M270,65 C320,65 320,170 350,185" fill="none" marker-end="url(#arrow)"/>
+          <path class="stroke-line" d="M270,123 C320,123 320,175 350,190" fill="none" marker-end="url(#arrow)"/>
+          <path class="stroke-line" d="M270,181 L350,195" fill="none" marker-end="url(#arrow)"/>
+
+          <!-- gate -> WorldEvent -->
+          <rect x="560" y="168" width="120" height="52" rx="9" fill="var(--surface-2)" stroke="var(--line-strong)"/>
+          <text x="620" y="189" text-anchor="middle" font-weight="600" font-size="12.5">WorldEvent</text>
+          <text x="620" y="205" text-anchor="middle" class="mono small muted">canonical model</text>
+          <path class="stroke-line" d="M508,194 L558,194" fill="none" marker-end="url(#arrow)"/>
+          <text x="533" y="187" text-anchor="middle" class="mono small muted">admitted providers</text>
+
+          <!-- context + market side inputs, dashed, join further downstream -->
+          <path class="stroke-muted" d="M270,245 C420,245 420,330 560,340" fill="none" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+          <text x="440" y="270" class="mono small muted">feature layer only</text>
+          <path class="stroke-line" d="M270,303 C420,303 420,340 560,340" fill="none" marker-end="url(#arrow)"/>
+
+          <!-- pipeline stages -->
+          <rect x="560" y="230" width="120" height="46" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="620" y="249" text-anchor="middle" font-weight="600" font-size="12">classify + dedup</text>
+          <text x="620" y="264" text-anchor="middle" class="mono small muted">events/*</text>
+          <path class="stroke-line" d="M620,220 L620,228" fill="none" marker-end="url(#arrow)"/>
+
+          <rect x="560" y="316" width="120" height="46" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="620" y="335" text-anchor="middle" font-weight="600" font-size="12">database</text>
+          <text x="620" y="350" text-anchor="middle" class="mono small muted">events + bars</text>
+          <path class="stroke-line" d="M620,276 L620,314" fill="none" marker-end="url(#arrow)"/>
+
+          <rect x="720" y="230" width="130" height="46" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="785" y="249" text-anchor="middle" font-weight="600" font-size="12">similarity + predict</text>
+          <text x="785" y="264" text-anchor="middle" class="mono small muted">bounded by as_of →fig.2</text>
+          <path class="stroke-line" d="M680,339 C700,339 700,253 718,253" fill="none" marker-end="url(#arrow)"/>
+
+          <rect x="720" y="316" width="130" height="46" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="785" y="335" text-anchor="middle" font-weight="600" font-size="12">evaluation</text>
+          <text x="785" y="350" text-anchor="middle" class="mono small muted">resolve + score</text>
+          <path class="stroke-line" d="M785,276 L785,314" fill="none" marker-end="url(#arrow)"/>
+          <path class="stroke-line" d="M850,339 C875,339 875,253 850,253" fill="none" stroke-dasharray="3,4" marker-end="url(#arrow)"/>
+          <text x="905" y="300" text-anchor="middle" class="mono small muted" transform="rotate(90 905 300)">writes back</text>
+
+          <!-- consumers -->
+          <rect x="920" y="220" width="100" height="46" rx="9" fill="var(--surface)" stroke="var(--accent)"/>
+          <text x="970" y="239" text-anchor="middle" font-weight="600" font-size="12">API</text>
+          <text x="970" y="254" text-anchor="middle" class="mono small muted">FastAPI</text>
+          <path class="stroke-line" d="M850,253 L918,243" fill="none" marker-end="url(#arrow)"/>
+
+          <rect x="920" y="290" width="100" height="46" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="970" y="309" text-anchor="middle" font-weight="600" font-size="12">dashboard</text>
+          <text x="970" y="324" text-anchor="middle" class="mono small muted">streamlit</text>
+          <path class="stroke-line" d="M1020,266 L1020,290" fill="none" class="stroke-line" marker-end="url(#arrow)"/>
+          <path class="stroke-line" d="M970,266 L970,288" fill="none" marker-end="url(#arrow)"/>
+
+          <rect x="920" y="356" width="100" height="46" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="970" y="375" text-anchor="middle" font-weight="600" font-size="12">investigator</text>
+          <text x="970" y="390" text-anchor="middle" class="mono small muted">agents/*</text>
+          <path class="stroke-line" d="M850,353 C880,353 890,379 918,379" fill="none" marker-end="url(#arrow)"/>
+
+          <!-- health endpoint annotation -->
+          <text x="352" y="430" class="mono small muted">GET /health/providers → HEALTHY · DEGRADED · DISABLED (disabled ≠ error)</text>
+          <path class="stroke-muted" d="M430,240 L430,420" fill="none" stroke-dasharray="2,4"/>
+        </svg>
+      </div>
+      <figcaption>
+        <strong>Figure 1.</strong> The registry, not the pipeline, decides which
+        sources exist. A source with no key simply never reaches
+        <span class="mono">WorldEvent</span> — the classify/dedup/predict/serve chain
+        to its right runs identically whether it received events from four free feeds
+        or five, which is what lets <span class="mono">WORLDMONITOR_API_KEY</span> be
+        removed without touching anything downstream of the gate.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ======================= FIGURE 2 : LLD ======================= -->
+  <section>
+    <div class="section-head">
+      <h2>2. Data layers — the as_of wall a prediction can never see past</h2>
+      <span class="tag">docs/LLD.md &sect;1</span>
+    </div>
+    <p class="claim">
+      A <span class="mono">WorldEvent</span> passes through six layers before it
+      becomes a scored outcome. The wall drawn at <span class="mono">as_of</span> is
+      real code, not a diagramming convention:
+      <span class="mono">get_events_as_of</span> and
+      <span class="mono">get_bars_as_of</span> are the only two read paths the
+      predictor uses, and both refuse any row timestamped after the cutoff. Just as
+      important is what happens on the far side of resolution: the resolver only ever
+      <strong>adds</strong> the four resolution fields to an existing row — it never
+      touches the fields that were written at creation.
+    </p>
+
+    <figure>
+      <div class="diagram-frame">
+        <svg class="arch" viewBox="0 0 1040 560" role="img"
+             aria-label="Raw provider payloads normalize into WorldEvent records, cross-source dedup curates them into one event with multiple evidence rows, then a vertical as_of wall blocks anything timestamped after the cutoff from reaching the similarity and prediction step, which writes only the immutable fields of a prediction row; later, once the horizon elapses, the outcome resolver reads bars up to the new as_of and writes only the separate resolution fields of the same row, never altering the immutable ones.">
+
+          <defs>
+            <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- layer labels row -->
+          <text x="95"  y="26" text-anchor="middle" class="mono small muted">RAW</text>
+          <text x="290" y="26" text-anchor="middle" class="mono small muted">NORMALIZED</text>
+          <text x="470" y="26" text-anchor="middle" class="mono small muted">CURATED</text>
+          <text x="700" y="26" text-anchor="middle" class="mono small muted">FEATURE + PREDICT</text>
+          <text x="930" y="26" text-anchor="middle" class="mono small muted">OUTCOME</text>
+
+          <!-- RAW -->
+          <rect x="30" y="46" width="130" height="58" rx="9" fill="var(--surface-2)" stroke="var(--line-strong)"/>
+          <text x="95" y="68" text-anchor="middle" font-weight="600" font-size="12">provider payload</text>
+          <text x="95" y="83" text-anchor="middle" class="mono small muted">raw_payload</text>
+          <text x="95" y="97" text-anchor="middle" class="mono small muted">retry + backoff</text>
+
+          <!-- NORMALIZED (3 stacked, from 3 providers, for one real quake) -->
+          <rect x="225" y="40" width="130" height="34" rx="7" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="290" y="61" text-anchor="middle" class="mono small">WorldEvent — usgs</text>
+          <rect x="225" y="80" width="130" height="34" rx="7" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="290" y="101" text-anchor="middle" class="mono small">WorldEvent — gdelt</text>
+          <rect x="225" y="120" width="130" height="34" rx="7" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="290" y="141" text-anchor="middle" class="mono small">WorldEvent — eonet</text>
+          <path class="stroke-line" d="M160,75 L223,57" fill="none" marker-end="url(#arrow2)"/>
+          <path class="stroke-line" d="M160,75 L223,97" fill="none" marker-end="url(#arrow2)"/>
+          <path class="stroke-line" d="M160,75 L223,137" fill="none" marker-end="url(#arrow2)"/>
+
+          <!-- CURATED -->
+          <rect x="410" y="60" width="130" height="80" rx="9" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="475" y="82" text-anchor="middle" font-weight="700" font-size="12">event_cluster_id</text>
+          <text x="475" y="98" text-anchor="middle" class="mono small muted">1 curated event</text>
+          <text x="475" y="113" text-anchor="middle" class="mono small muted">3× EventEvidence</text>
+          <text x="475" y="128" text-anchor="middle" class="mono small muted">rows retained</text>
+          <path class="stroke-line" d="M355,57 C385,57 385,80 408,85" fill="none" marker-end="url(#arrow2)"/>
+          <path class="stroke-line" d="M355,97 L408,99" fill="none" marker-end="url(#arrow2)"/>
+          <path class="stroke-line" d="M355,137 C385,137 385,115 408,110" fill="none" marker-end="url(#arrow2)"/>
+          <text x="475" y="30" text-anchor="middle" class="mono small muted">time±6h · geo · type · entity match</text>
+
+          <!-- market bars, separate lane, joins at feature/predict -->
+          <rect x="410" y="180" width="130" height="46" rx="9" fill="var(--free-bg)" stroke="var(--free)"/>
+          <text x="475" y="199" text-anchor="middle" font-weight="600" font-size="12">MarketBar store</text>
+          <text x="475" y="214" text-anchor="middle" class="mono small" fill="var(--free)">binance · stooq · synthetic</text>
+
+          <!-- AS_OF WALL -->
+          <line x1="590" y1="36" x2="590" y2="470" class="stroke-line" stroke="var(--wall)" stroke-width="2" stroke-dasharray="2,6"/>
+          <text x="590" y="490" text-anchor="middle" class="mono small" fill="var(--wall)" font-weight="600">as_of</text>
+          <text x="605" y="150" class="mono small" fill="var(--wall)" transform="rotate(90 605 150)">nothing timestamped &gt; as_of crosses this line →</text>
+
+          <!-- FEATURE + PREDICT -->
+          <rect x="630" y="55" width="150" height="50" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="705" y="74" text-anchor="middle" font-weight="600" font-size="12">retrieve analogues</text>
+          <text x="705" y="90" text-anchor="middle" class="mono small muted">similarity/*, occurred_at+H≤as_of</text>
+          <path class="stroke-line" d="M540,95 C575,95 575,80 628,80" fill="none" marker-end="url(#arrow2)"/>
+
+          <rect x="630" y="120" width="150" height="50" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+          <text x="705" y="139" text-anchor="middle" font-weight="600" font-size="12">weight + distribute</text>
+          <text x="705" y="155" text-anchor="middle" class="mono small muted">model.py, confidence.py</text>
+          <path class="stroke-line" d="M705,105 L705,118" fill="none" marker-end="url(#arrow2)"/>
+          <path class="stroke-line" d="M540,205 C595,205 595,150 628,145" fill="none" marker-end="url(#arrow2)"/>
+
+          <!-- Prediction record: split immutable / resolution -->
+          <rect x="630" y="205" width="150" height="130" rx="9" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="705" y="225" text-anchor="middle" font-weight="700" font-size="12.5">Prediction row</text>
+          <line x1="640" y1="235" x2="770" y2="235" class="stroke-line"/>
+          <text x="705" y="252" text-anchor="middle" class="mono small">direction · probability</text>
+          <text x="705" y="266" text-anchor="middle" class="mono small">expected/median return</text>
+          <text x="705" y="280" text-anchor="middle" class="mono small" font-weight="600">created_at = as_of</text>
+          <text x="705" y="296" text-anchor="middle" class="mono small muted">— immutable, written once —</text>
+          <line x1="640" y1="304" x2="770" y2="304" class="stroke-line" stroke-dasharray="3,3"/>
+          <text x="705" y="320" text-anchor="middle" class="mono small" fill="var(--wall)">resolved_at · actual_return</text>
+          <path class="stroke-line" d="M705,170 L705,203" fill="none" marker-end="url(#arrow2)"/>
+
+          <!-- OUTCOME resolver -->
+          <rect x="850" y="240" width="150" height="70" rx="9" fill="var(--surface)" stroke="var(--wall)" stroke-width="2"/>
+          <text x="925" y="262" text-anchor="middle" font-weight="700" font-size="12">outcome resolver</text>
+          <text x="925" y="278" text-anchor="middle" class="mono small muted">runs once as_of ≥</text>
+          <text x="925" y="292" text-anchor="middle" class="mono small muted">occurred_at + horizon</text>
+          <path class="stroke-line" d="M540,215 C820,215 820,255 848,264" fill="none" marker-end="url(#arrow2)" stroke="var(--free)"/>
+          <text x="700" y="45" text-anchor="middle" class="mono small" fill="var(--free)">get_bars_as_of(new as_of)</text>
+
+          <path stroke="var(--wall)" stroke-width="2" d="M848,285 C815,300 790,313 770,315" fill="none" marker-end="url(#arrow2)"/>
+          <text x="845" y="330" text-anchor="end" class="mono small" fill="var(--wall)">writes resolution fields only</text>
+
+          <!-- explicit "never touches" annotation back to immutable block -->
+          <path stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="2,3" d="M848,250 C800,235 760,250 772,262" fill="none"/>
+          <text x="905" y="222" text-anchor="middle" class="mono small muted">never rewrites</text>
+
+          <!-- lifecycle time note -->
+          <text x="475" y="400" text-anchor="middle" class="mono small muted">— time passes; horizon elapses —</text>
+          <path class="stroke-muted" d="M410,400 L100,400" fill="none" stroke-dasharray="4,4"/>
+          <text x="230" y="418" text-anchor="middle" class="mono small muted">jobs/backfill.py walks as_of forward one day at a time</text>
+
+        </svg>
+      </div>
+      <figcaption>
+        <strong>Figure 2.</strong> Three USGS/GDELT/EONET records for one earthquake
+        curate down to a single event before anything crosses the
+        <span class="mono">as_of</span> wall. A prediction is written once, on the
+        left of that wall's second appearance in time; the resolver crosses back only
+        to fill in the four resolution fields on the same row — the split box is
+        literal, not decorative: <span class="mono">tests/test_outcome_resolver.py</span>
+        asserts the top half never changes.
+      </figcaption>
+    </figure>
+  </section>
+
+  <footer>
+    Full prose specs: <span class="mono">docs/HLD.md</span> and
+    <span class="mono">docs/LLD.md</span>. Provider cost/rate-limit detail:
+    <span class="mono">docs/data-sources.md</span>. Regression guard for the free-mode
+    claim in Figure&nbsp;1: <span class="mono">tests/test_no_worldmonitor_required.py</span>.
+  </footer>
+
+</div>
+</body>
+</html>

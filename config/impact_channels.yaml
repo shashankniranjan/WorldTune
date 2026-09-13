@@ -1,0 +1,329 @@
+# WorldPulse deterministic event -> asset impact channel mapping.
+#
+# This file is the single source of truth for "which instruments could this
+# kind of event plausibly move". The rule-based classifier and the feature
+# layer read it at runtime (see events/impact_channels.py), so the mapping
+# can be tuned without touching code.
+#
+# Matching semantics
+# ------------------
+# Every entry under `rules` is evaluated against a WorldEvent. A rule
+# matches when ALL of its present conditions match:
+#
+#   domains:    event_domain / event_type is in this list
+#   subtypes:   event_subtype is in this list
+#   countries:  any of the event's countries/locations matches (substring,
+#               case-insensitive)
+#   regions:    any of the event's countries is a member of the named
+#               region under `regions:` below
+#   keywords:   any keyword appears in headline/summary (case-insensitive)
+#   min_severity: event severity >= this
+#
+# Every matching rule contributes its `assets`, `channels`, `industries`
+# and `commodities`; contributions are unioned, and `market_relevance` is
+# the maximum across matching rules. Rules are ordered most-specific-first
+# for readability only -- order does not affect the result.
+#
+# Symbols use the same identifiers as markets/instruments.py.
+
+version: 2
+
+regions:
+  middle_east:
+    [Israel, Iran, Iraq, Syria, Lebanon, Yemen, Saudi Arabia, Qatar, Kuwait,
+     United Arab Emirates, Egypt, Jordan, Bahrain, Oman]
+  east_asia_semiconductor:
+    [Taiwan, South Korea, Japan, China]
+  major_energy_producer:
+    [Saudi Arabia, Russia, USA, Iran, Iraq, United Arab Emirates, Kuwait,
+     Venezuela, Nigeria, Libya, Norway, Qatar, Kazakhstan]
+  major_economy:
+    [USA, China, Japan, Germany, United Kingdom, France, India, Russia,
+     Saudi Arabia, Brazil, Canada, South Korea]
+  chokepoint_adjacent:
+    # Countries bordering Hormuz / Suez / Bab el-Mandeb / Malacca / Bosphorus
+    [Iran, Oman, United Arab Emirates, Egypt, Yemen, Djibouti, Saudi Arabia,
+     Indonesia, Malaysia, Singapore, Turkey]
+  south_asia:
+    [India, Pakistan, Bangladesh, Sri Lanka, Nepal, Bhutan]
+
+# Fallback per-domain mapping, applied when no specific rule matched.
+# Mirrors the pre-refactor hardcoded `_DOMAIN_ASSETS` table so behaviour
+# is unchanged for events that match nothing more specific.
+defaults:
+  conflict_geopolitical:
+    assets: ["GC=F", "^VIX", "^GSPC", "BZ=F", "DX-Y.NYB"]
+    channels: [regional_security, diplomatic_relations]
+    market_relevance: 0.75
+  military_activity:
+    assets: ["GC=F", "^VIX", "BZ=F", "CL=F", "ITA", "^GSPC"]
+    channels: [regional_security, shipping_lanes]
+    market_relevance: 0.80
+  energy_disruption:
+    assets: ["BZ=F", "CL=F", "NG=F", "XLE", "^GSPC"]
+    channels: [energy_supply, shipping_lanes]
+    market_relevance: 0.85
+  economic_policy:
+    assets: ["DX-Y.NYB", "^GSPC", "^IXIC", "TLT", "EURUSD=X"]
+    channels: [monetary_policy, trade_policy]
+    market_relevance: 0.70
+  natural_disaster:
+    assets: ["^GSPC", "GC=F", "TLT", "XLE"]
+    channels: [infrastructure, supply_chain]
+    market_relevance: 0.55
+
+rules:
+
+  # --- Conflict / military ------------------------------------------------
+
+  - name: conflict_middle_east
+    domains: [conflict_geopolitical, military_activity]
+    regions: [middle_east]
+    assets: ["BZ=F", "CL=F", "GC=F", "DX-Y.NYB", "BTC-USD", "^VIX"]
+    channels: [energy_supply, shipping_lanes, regional_security]
+    industries: [defense, energy, shipping]
+    commodities: [brent_crude, wti_crude, gold]
+    market_relevance: 0.90
+
+  - name: conflict_chokepoint_shipping
+    domains: [conflict_geopolitical, military_activity]
+    regions: [chokepoint_adjacent]
+    subtypes: [naval_incident, shipping_disruption, missile_strike]
+    assets: ["BZ=F", "CL=F", "NG=F", "^VIX", "GC=F"]
+    channels: [shipping_lanes, energy_supply, supply_chain]
+    industries: [shipping, energy, insurance]
+    commodities: [brent_crude, wti_crude, lng]
+    market_relevance: 0.88
+
+  - name: conflict_russia_ukraine
+    domains: [conflict_geopolitical, military_activity]
+    countries: [Russia, Ukraine, Belarus, Poland]
+    assets: ["NG=F", "BZ=F", "GC=F", "HG=F", "EURUSD=X", "ITA", "^VIX"]
+    channels: [energy_supply, regional_security, supply_chain]
+    industries: [defense, energy, agriculture]
+    commodities: [natural_gas, brent_crude, wheat, gold]
+    market_relevance: 0.87
+
+  - name: military_escalation_general
+    domains: [military_activity]
+    min_severity: 0.6
+    assets: ["GC=F", "^VIX", "ITA", "BZ=F", "^GSPC"]
+    channels: [regional_security]
+    industries: [defense]
+    commodities: [gold]
+    market_relevance: 0.82
+
+  - name: sanctions_and_export_controls
+    domains: [economic_policy, conflict_geopolitical]
+    subtypes: [sanctions]
+    keywords: [sanction, export ban, embargo, export control, tariff]
+    assets: ["DX-Y.NYB", "GC=F", "^GSPC", "SOXX", "BZ=F"]
+    channels: [trade_policy, supply_chain]
+    industries: [semiconductors, energy, shipping]
+    commodities: [gold, brent_crude]
+    market_relevance: 0.78
+
+  # --- Energy supply ------------------------------------------------------
+
+  - name: energy_supply_disruption
+    domains: [energy_disruption]
+    assets: ["BZ=F", "CL=F", "NG=F", "XLE", "^GSPC"]
+    channels: [energy_supply, shipping_lanes]
+    industries: [energy, refining, shipping]
+    commodities: [brent_crude, wti_crude, natural_gas]
+    market_relevance: 0.88
+
+  - name: energy_disruption_major_producer
+    domains: [energy_disruption]
+    regions: [major_energy_producer]
+    assets: ["BZ=F", "CL=F", "NG=F", "XLE", "DX-Y.NYB", "^VIX"]
+    channels: [energy_supply, shipping_lanes]
+    industries: [energy, refining]
+    commodities: [brent_crude, wti_crude, natural_gas]
+    market_relevance: 0.92
+
+  - name: pipeline_or_refinery_outage
+    subtypes: [pipeline_disruption, refinery_disruption]
+    assets: ["BZ=F", "CL=F", "XLE", "NG=F"]
+    channels: [energy_supply, infrastructure]
+    industries: [energy, refining]
+    commodities: [brent_crude, wti_crude]
+    market_relevance: 0.85
+
+  - name: opec_production_decision
+    subtypes: [production_cut]
+    keywords: [opec, production cut, output cut, quota]
+    assets: ["BZ=F", "CL=F", "XLE", "DX-Y.NYB"]
+    channels: [energy_supply]
+    industries: [energy]
+    commodities: [brent_crude, wti_crude]
+    market_relevance: 0.90
+
+  # --- Natural disasters --------------------------------------------------
+
+  - name: earthquake_taiwan_semiconductor
+    subtypes: [earthquake, tsunami]
+    countries: [Taiwan]
+    assets: ["SOXX", "GC=F", "^IXIC", "^VIX"]
+    channels: [supply_chain, infrastructure]
+    industries: [semiconductors, electronics]
+    commodities: [gold]
+    market_relevance: 0.85
+
+  - name: earthquake_east_asia_supply_chain
+    subtypes: [earthquake, tsunami]
+    regions: [east_asia_semiconductor]
+    assets: ["SOXX", "^IXIC", "GC=F", "JPY=X", "^GSPC"]
+    channels: [supply_chain, infrastructure]
+    industries: [semiconductors, electronics, shipping]
+    commodities: [gold]
+    market_relevance: 0.80
+
+  - name: major_earthquake_global
+    subtypes: [earthquake, tsunami]
+    min_severity: 0.75
+    assets: ["GC=F", "^GSPC", "TLT", "^VIX"]
+    channels: [infrastructure, supply_chain]
+    industries: [insurance, construction]
+    commodities: [gold]
+    market_relevance: 0.62
+
+  - name: tropical_cyclone_gulf_energy
+    subtypes: [tropical_cyclone, storm]
+    countries: [USA, Mexico]
+    assets: ["NG=F", "CL=F", "XLE", "^GSPC"]
+    channels: [energy_supply, infrastructure, supply_chain]
+    industries: [energy, refining, insurance]
+    commodities: [natural_gas, wti_crude]
+    market_relevance: 0.68
+
+  - name: wildfire_cluster
+    subtypes: [wildfire]
+    assets: ["^GSPC", "XLE", "GC=F"]
+    channels: [infrastructure, supply_chain]
+    industries: [insurance, utilities, agriculture]
+    commodities: []
+    market_relevance: 0.45
+
+  - name: volcanic_eruption_aviation
+    subtypes: [volcanic_eruption]
+    assets: ["^GSPC", "GC=F", "BZ=F"]
+    channels: [shipping_lanes, infrastructure]
+    industries: [aviation, insurance]
+    commodities: []
+    market_relevance: 0.50
+
+  - name: flooding_industrial
+    subtypes: [flooding, landslide]
+    assets: ["^GSPC", "HG=F", "GC=F", "TLT"]
+    channels: [supply_chain, infrastructure]
+    industries: [insurance, mining, agriculture]
+    commodities: [copper]
+    market_relevance: 0.48
+
+  - name: drought_agriculture
+    subtypes: [drought]
+    assets: ["^GSPC", "GC=F"]
+    channels: [supply_chain, agriculture]
+    industries: [agriculture, utilities]
+    commodities: [wheat, corn]
+    market_relevance: 0.42
+
+  # --- Economic / policy --------------------------------------------------
+
+  - name: central_bank_rate_decision
+    subtypes: [rate_decision]
+    keywords: [central bank, interest rate, rate decision, rate hike, rate cut, federal reserve]
+    assets: ["DX-Y.NYB", "^GSPC", "GC=F", "TLT", "EURUSD=X", "^IXIC"]
+    channels: [monetary_policy]
+    industries: [banking, real_estate]
+    commodities: [gold]
+    market_relevance: 0.86
+
+  - name: inflation_data_shock
+    subtypes: [inflation_shock]
+    assets: ["DX-Y.NYB", "TLT", "^GSPC", "GC=F", "^IXIC"]
+    channels: [monetary_policy]
+    industries: [banking]
+    commodities: [gold]
+    market_relevance: 0.80
+
+  - name: economic_policy_major_economy
+    domains: [economic_policy]
+    regions: [major_economy]
+    assets: ["DX-Y.NYB", "^GSPC", "^IXIC", "TLT", "EURUSD=X"]
+    channels: [monetary_policy, trade_policy]
+    industries: [banking]
+    commodities: []
+    market_relevance: 0.74
+
+  # --- India (country focus) ----------------------------------------------
+  # India is a major crude-oil importer, so conflict/energy events there (or
+  # near it) move the rupee and local indices directly, on top of the global
+  # oil/gold reaction already captured by the rules above. One explicit rule
+  # per event domain (rather than a single domain-agnostic catch-all) so
+  # each domain gets its own market_relevance and channel set, matching the
+  # granularity used for every other country/region in this file.
+
+  - name: india_conflict_geopolitical
+    domains: [conflict_geopolitical]
+    countries: [India]
+    assets: ["^NSEI", "^BSESN", "INR=X", "GC=F", "^VIX"]
+    channels: [regional_security, diplomatic_relations, trade_policy]
+    industries: [banking, defense]
+    commodities: [gold]
+    market_relevance: 0.78
+
+  - name: india_military_activity
+    domains: [military_activity]
+    countries: [India]
+    assets: ["^NSEI", "^BSESN", "INR=X", "GC=F", "ITA"]
+    channels: [regional_security, shipping_lanes]
+    industries: [banking, defense]
+    commodities: [gold]
+    market_relevance: 0.80
+
+  - name: india_energy_disruption
+    domains: [energy_disruption]
+    countries: [India]
+    assets: ["INR=X", "^NSEI", "BZ=F", "CL=F", "INDA"]
+    channels: [energy_supply, trade_policy]
+    industries: [energy, banking]
+    commodities: [brent_crude, wti_crude]
+    market_relevance: 0.82
+
+  - name: india_economic_policy
+    domains: [economic_policy]
+    countries: [India]
+    assets: ["INR=X", "^NSEI", "^BSESN", "INDA", "GC=F"]
+    channels: [monetary_policy, trade_policy]
+    industries: [banking]
+    commodities: [gold]
+    market_relevance: 0.80
+
+  - name: india_natural_disaster
+    domains: [natural_disaster]
+    countries: [India]
+    assets: ["^NSEI", "^BSESN", "INR=X", "GC=F", "TLT"]
+    channels: [infrastructure, supply_chain]
+    industries: [insurance, agriculture]
+    commodities: [gold]
+    market_relevance: 0.62
+
+  - name: india_energy_import_exposure
+    domains: [energy_disruption, conflict_geopolitical]
+    regions: [middle_east]
+    assets: ["INR=X", "^NSEI", "BZ=F", "CL=F"]
+    channels: [energy_supply, trade_policy]
+    industries: [energy, banking]
+    commodities: [brent_crude, wti_crude]
+    market_relevance: 0.70
+
+  - name: south_asia_natural_disaster
+    domains: [natural_disaster]
+    regions: [south_asia]
+    assets: ["^NSEI", "^BSESN", "INR=X", "GC=F", "TLT"]
+    channels: [infrastructure, supply_chain]
+    industries: [insurance, agriculture]
+    commodities: [gold]
+    market_relevance: 0.60

@@ -1,0 +1,412 @@
+<title>WorldTune Pitch</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#04070E;
+  --panel:rgba(255,255,255,.035);
+  --panel-2:rgba(255,255,255,.055);
+  --line:rgba(146,171,204,.16);
+  --line-2:rgba(146,171,204,.30);
+  --text:#EAF1FA;
+  --text-2:#9BAEC6;
+  --text-3:#5F7189;
+  --tune:#4FE3C1;
+  --pulse:#7C6BFF;
+  --hot:#FF6B4A;
+  --warm:#FFB443;
+  --cool:#4C9BFF;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--ink);color:var(--text);font-family:var(--body);overflow:hidden}
+#deck{position:fixed;inset:0;display:grid;place-items:center;
+  background:
+    radial-gradient(120% 90% at 50% -20%, rgba(124,107,255,.16), transparent 60%),
+    radial-gradient(90% 70% at 90% 110%, rgba(79,227,193,.10), transparent 60%),
+    var(--ink);
+}
+#stage{position:relative;width:1280px;height:720px;flex:none;transform-origin:center center;
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  background:linear-gradient(160deg,#070C16 0%,#04070E 55%,#060910 100%);
+  box-shadow:0 40px 120px -40px rgba(0,0,0,.9);}
+#stage::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;opacity:.22;
+  -webkit-mask-image:radial-gradient(120% 100% at 50% 40%,#000 20%,transparent 78%);
+  mask-image:radial-gradient(120% 100% at 50% 40%,#000 20%,transparent 78%);}
+
+.slide{position:absolute;inset:0;padding:52px 64px;display:none;flex-direction:column}
+.slide.on{display:flex}
+.brandmark{position:absolute;top:26px;right:30px;font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--text-3);text-transform:uppercase;z-index:5}
+.pageno{position:absolute;bottom:24px;right:32px;font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:.16em;z-index:5}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.30em;text-transform:uppercase;color:var(--tune)}
+h2{font-family:var(--display);margin:0;text-wrap:balance;font-size:40px;line-height:1.06;font-weight:700;letter-spacing:-.02em}
+
+/* ---------- S1 HERO ---------- */
+#s1{padding:0}
+#s1 canvas{position:absolute;inset:0;width:100%;height:100%}
+.hero{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:0 64px;gap:24px}
+.wordmark{font-family:var(--display);font-weight:900;font-size:104px;line-height:.92;letter-spacing:-.035em;
+  background:linear-gradient(96deg,#FFFFFF 10%,var(--tune) 55%,var(--pulse) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.tagline{margin-top:14px;font-family:var(--display);font-weight:500;font-size:26px;color:var(--text);letter-spacing:-.01em}
+.heroline{margin-top:26px;display:flex;flex-direction:column;gap:8px}
+.heroline b{font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3);font-weight:500}
+.heroline em{font-style:normal;font-family:var(--display);font-weight:700;font-size:22px;color:var(--tune)}
+.heroline p{margin:10px 0 0;color:var(--text-2);font-size:16px;line-height:1.5;max-width:38ch}
+.core{position:relative;height:520px;display:grid;place-items:center}
+.persona{width:156px;height:156px;border-radius:50%;display:grid;place-items:center;text-align:center;
+  border:1px solid rgba(79,227,193,.55);background:radial-gradient(circle at 50% 35%,rgba(79,227,193,.22),rgba(4,7,14,.9) 70%);
+  box-shadow:0 0 0 10px rgba(79,227,193,.05),0 0 70px rgba(79,227,193,.28);z-index:3}
+.persona span{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--tune);text-transform:uppercase}
+.persona strong{display:block;font-family:var(--display);font-size:30px;font-weight:900;letter-spacing:-.02em}
+.chip{position:absolute;font-family:var(--mono);font-size:11px;letter-spacing:.16em;padding:7px 13px;border-radius:999px;
+  border:1px solid var(--line-2);background:rgba(8,13,22,.82);color:var(--text-2);white-space:nowrap;z-index:2}
+.chip.lit{color:var(--tune);border-color:rgba(79,227,193,.5);box-shadow:0 0 24px rgba(79,227,193,.18)}
+.outs{position:absolute;right:-6px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:4}
+.out{display:flex;align-items:center;gap:10px;padding:9px 13px;border-radius:10px;border:1px solid rgba(79,227,193,.28);
+  background:linear-gradient(90deg,rgba(79,227,193,.12),rgba(8,13,22,.86));font-family:var(--mono);font-size:12px;color:var(--text)}
+.out i{width:6px;height:6px;border-radius:50%;background:var(--tune);box-shadow:0 0 12px var(--tune);flex:none;font-style:normal}
+
+/* ---------- S2 PROBLEM ---------- */
+.noise{position:absolute;inset:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:7px;padding:40px 30px;
+  -webkit-mask-image:radial-gradient(58% 52% at 50% 50%,transparent 34%,#000 72%);
+  mask-image:radial-gradient(58% 52% at 50% 50%,transparent 34%,#000 72%)}
+.n{font-family:var(--mono);font-size:10.5px;color:var(--text-3);border:1px solid rgba(146,171,204,.12);border-radius:6px;padding:5px 8px;white-space:nowrap}
+.n.a{color:rgba(255,107,74,.55);border-color:rgba(255,107,74,.2)}
+.n.b{color:rgba(124,107,255,.6);border-color:rgba(124,107,255,.22)}
+.n.c{color:rgba(76,155,255,.55);border-color:rgba(76,155,255,.2)}
+.askwrap{position:relative;margin:auto;width:600px;text-align:center;z-index:3}
+.ask{border:1px solid rgba(79,227,193,.4);border-radius:18px;padding:30px 34px;background:rgba(5,9,16,.94);
+  box-shadow:0 0 90px rgba(4,7,14,.98),0 0 40px rgba(79,227,193,.12)}
+.ask .q{font-family:var(--display);font-weight:900;font-size:31px;line-height:1.14;letter-spacing:-.02em}
+.ask .q u{text-decoration:none;color:var(--tune)}
+.counters{display:flex;justify-content:center;gap:0;margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
+.counters div{flex:1;padding:0 8px}
+.counters b{display:block;font-family:var(--display);font-weight:900;font-size:23px;font-variant-numeric:tabular-nums}
+.counters span{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);display:block;margin-top:4px;line-height:1.4}
+.filterband{position:absolute;left:64px;right:64px;bottom:46px;display:flex;align-items:center;gap:16px;z-index:4;
+  border:1px solid rgba(79,227,193,.3);border-left:3px solid var(--tune);border-radius:10px;padding:14px 20px;background:rgba(79,227,193,.06)}
+.filterband p{margin:0;font-family:var(--display);font-weight:700;font-size:19px}
+.filterband small{margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--tune)}
+
+/* ---------- S3 PERSONA / PANELS ---------- */
+.personabar{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;margin-top:14px;
+  border:1px solid var(--line-2);border-radius:12px;padding:14px 18px;background:var(--panel)}
+.personabar .who strong{display:block;font-family:var(--display);font-weight:900;font-size:19px;letter-spacing:-.01em}
+.personabar .who span{font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:.1em}
+.facets{display:flex;flex-wrap:wrap;gap:6px}
+.facets i{font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;padding:4px 9px;border-radius:6px;border:1px solid var(--line-2);color:var(--text-2)}
+.facets i.k{color:var(--pulse);border-color:rgba(124,107,255,.35)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:20px;flex:1}
+.panel{border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,var(--panel),rgba(255,255,255,.012))}
+.panel.fin{box-shadow:inset 3px 0 0 var(--pulse)}
+.panel.car{box-shadow:inset 3px 0 0 var(--tune)}
+.panel h3{margin:0;font-family:var(--display);font-weight:900;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+.panel h3 em{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--text-3);margin-left:auto;font-weight:400}
+.rows{display:flex;flex-direction:column;gap:7px}
+.row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:9px 12px;border-radius:9px;background:var(--panel-2)}
+.row span{font-size:14px}
+.row .bar{width:66px;height:5px;border-radius:3px;background:rgba(146,171,204,.16);overflow:hidden}
+.row .bar i{display:block;height:100%;border-radius:3px}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;padding:3px 8px;border-radius:5px;font-weight:600}
+.t-hot{color:var(--hot);background:rgba(255,107,74,.12)}
+.t-warm{color:var(--warm);background:rgba(255,180,67,.12)}
+.t-neu{color:var(--text-2);background:rgba(146,171,204,.12)}
+.t-cool{color:var(--cool);background:rgba(76,155,255,.12)}
+.subhead{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3)}
+.spot{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
+.spotcard{border:1px solid var(--line-2);border-radius:10px;padding:12px;background:rgba(255,255,255,.03)}
+.spotcard span{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3)}
+.spotcard strong{display:block;margin-top:6px;font-family:var(--display);font-weight:700;font-size:16px;line-height:1.2}
+.kicker{margin-top:16px;text-align:center;font-family:var(--display);font-weight:500;font-size:16px;color:var(--text-2)}
+.kicker b{color:var(--text);font-weight:700}
+
+/* ---------- S4 ENGINE ---------- */
+.flow{display:grid;grid-template-columns:1fr 300px;gap:28px;margin-top:22px;flex:1;align-items:start}
+.rail{display:flex;flex-direction:column}
+.stg{display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:stretch}
+.stg .dotcol{display:flex;flex-direction:column;align-items:center;height:100%}
+.stg .dot{width:11px;height:11px;border-radius:50%;border:2px solid var(--tune);margin-top:15px;flex:none;background:var(--ink)}
+.stg .stem{flex:1;width:1px;background:linear-gradient(180deg,var(--line-2),rgba(146,171,204,.06))}
+.stg .body{padding:8px 0 14px}
+.stg h4{margin:0;font-family:var(--display);font-weight:900;font-size:17px;letter-spacing:.02em}
+.stg p{margin:4px 0 0;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--text-3)}
+.stg.src h4{color:var(--pulse)}
+.stg.src .dot{border-color:var(--pulse)}
+.insight{border:1px solid rgba(79,227,193,.42);border-radius:16px;padding:20px;background:linear-gradient(180deg,rgba(79,227,193,.10),rgba(6,10,18,.9));box-shadow:0 0 60px rgba(79,227,193,.12)}
+.insight .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--tune)}
+.insight .ttl{font-family:var(--display);font-weight:900;font-size:26px;line-height:1.08;letter-spacing:-.02em;margin:8px 0 12px}
+.metrics{display:flex;flex-direction:column;gap:9px;margin-top:12px;border-top:1px solid rgba(79,227,193,.2);padding-top:12px}
+.metric{display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--text-2)}
+.metric b{color:var(--text);font-size:14px;font-variant-numeric:tabular-nums}
+.spark{margin-top:14px}
+.notonly{margin-top:18px;display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:11.5px;color:var(--text-3);letter-spacing:.08em}
+.notonly u{text-decoration:none;color:var(--tune)}
+
+/* ---------- S5 VISION ---------- */
+#s5{justify-content:center}
+.stack{display:grid;grid-template-columns:1fr 46px 1fr;align-items:center}
+.layer{border:1px solid var(--line-2);border-radius:14px;padding:20px 22px;background:var(--panel)}
+.layer.p{box-shadow:inset 0 0 0 1px rgba(124,107,255,.18),0 0 60px -20px rgba(124,107,255,.5)}
+.layer.t{box-shadow:inset 0 0 0 1px rgba(79,227,193,.18),0 0 60px -20px rgba(79,227,193,.5)}
+.layer h3{margin:0;font-family:var(--display);font-weight:900;font-size:30px;letter-spacing:-.02em}
+.layer.p h3{color:var(--pulse)}
+.layer.t h3{color:var(--tune)}
+.layer p{margin:6px 0 0;color:var(--text-2);font-size:15px}
+.arrowx{display:grid;place-items:center;color:var(--text-3);font-family:var(--mono);font-size:20px}
+.horizon{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+.hz{border:1px solid var(--line);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px}
+.hz>span{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--text-3)}
+.hz .v{display:flex;flex-wrap:wrap;gap:6px}
+.hz .v i{font-style:normal;font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:6px;border:1px solid var(--line-2);color:var(--text-2)}
+.hz.now .v i{color:var(--tune);border-color:rgba(79,227,193,.4);background:rgba(79,227,193,.07)}
+.closing{margin-top:30px;font-family:var(--display);font-weight:700;font-size:29px;line-height:1.2;letter-spacing:-.02em;text-wrap:balance;max-width:26ch}
+.closing em{font-style:normal;color:var(--tune)}
+.signoff{margin-top:auto;display:flex;align-items:baseline;gap:16px;border-top:1px solid var(--line);padding-top:18px}
+.signoff b{font-family:var(--display);font-weight:900;font-size:34px;letter-spacing:-.03em;
+  background:linear-gradient(96deg,#fff,var(--tune));-webkit-background-clip:text;background-clip:text;color:transparent}
+.signoff>span{font-family:var(--display);font-weight:500;font-size:17px;color:var(--text-2)}
+
+/* ---------- nav ---------- */
+#nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;
+  background:rgba(8,13,22,.86);border:1px solid var(--line);border-radius:999px;padding:7px 12px;z-index:20}
+#nav button{all:unset;cursor:pointer;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--text-2);font-family:var(--mono);font-size:13px}
+#nav button:hover{background:rgba(255,255,255,.08);color:var(--text)}
+#nav button:focus-visible,.dots i:focus-visible{outline:2px solid var(--tune);outline-offset:2px}
+.dots{display:flex;gap:7px}
+.dots i{width:7px;height:7px;border-radius:50%;background:rgba(146,171,204,.3);cursor:pointer;display:block}
+.dots i.on{background:var(--tune);box-shadow:0 0 10px var(--tune)}
+#nav code{font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:.1em}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="deck"><div id="stage">
+
+<section class="slide on" id="s1">
+  <canvas id="fx" width="1280" height="720"></canvas>
+  <div class="hero">
+    <div>
+      <div class="wordmark">WORLD<br>TUNE</div>
+      <div class="tagline">The world, tuned to you.</div>
+      <div class="heroline">
+        <b>Thousands of signals.</b>
+        <em>Only a few matter to YOU.</em>
+        <p>WorldTune turns global signals into personalized intelligence — and where those trends are heading next.</p>
+      </div>
+    </div>
+    <div class="core">
+      <div class="persona"><div><span>persona</span><strong>YOU</strong></div></div>
+      <div class="chip lit" style="left:6%;top:10%">NEWS</div>
+      <div class="chip" style="right:2%;top:4%">MARKETS</div>
+      <div class="chip lit" style="left:-2%;top:46%">TECHNOLOGY</div>
+      <div class="chip" style="left:10%;bottom:12%">JOBS</div>
+      <div class="chip lit" style="right:6%;bottom:6%">SKILLS</div>
+      <div class="outs">
+        <div class="out"><i></i>BTC momentum shift</div>
+        <div class="out"><i></i>Agent infra hiring +31%</div>
+        <div class="out"><i></i>1 skill to learn today</div>
+      </div>
+    </div>
+  </div>
+  <div class="brandmark">World Tune</div><div class="pageno">01 / 05</div>
+</section>
+
+<section class="slide" id="s2">
+  <div class="noise" id="noise"></div>
+  <div style="position:relative;z-index:4">
+    <div class="eyebrow">The problem</div>
+    <h2 style="margin-top:10px;max-width:20ch">We don't have an information problem.<br><span style="color:var(--hot)">We have a relevance problem.</span></h2>
+  </div>
+  <div class="askwrap">
+    <div class="ask">
+      <div class="q">What matters to <u>ME</u> —<br>and what should I pay attention to next?</div>
+      <div class="counters">
+        <div><b>84,000</b><span>news &amp; market<br>signals / day</span></div>
+        <div><b>1.2M</b><span>open job<br>postings</span></div>
+        <div><b>310</b><span>new AI releases<br>this month</span></div>
+        <div><b>~7</b><span>that actually<br>concern you</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="filterband"><p>WorldTune filters the noise using your persona.</p><small>RELEVANCE ENGINE</small></div>
+  <div class="brandmark">World Tune</div><div class="pageno">02 / 05</div>
+</section>
+
+<section class="slide" id="s3">
+  <div class="eyebrow">Personalized intelligence</div>
+  <h2 style="margin-top:10px">One Persona. Two Intelligence Engines.</h2>
+  <div class="personabar">
+    <div class="who"><strong>Senior Data Engineer</strong><span>10 YRS · BENGALURU</span></div>
+    <div class="facets"><i>Spark</i><i>Kafka</i><i>Python</i><i>Cloud</i><i class="k">Crypto</i><i class="k">Technology</i></div>
+    <div class="subhead">YOUR&nbsp;PERSONA</div>
+  </div>
+  <div class="split">
+    <div class="panel fin">
+      <h3><span style="color:var(--pulse)">◈</span> Financial Pulse <em>24H TRAJECTORY</em></h3>
+      <div class="subhead">What's hot / cold · assets &amp; sectors</div>
+      <div class="rows">
+        <div class="row"><span>BTC</span><div class="bar"><i style="width:88%;background:var(--hot)"></i></div><b class="tag t-hot">HOT ↑</b></div>
+        <div class="row"><span>AI Stocks</span><div class="bar"><i style="width:71%;background:var(--warm)"></i></div><b class="tag t-warm">HEATING ↑</b></div>
+        <div class="row"><span>Oil</span><div class="bar"><i style="width:44%;background:#8494AB"></i></div><b class="tag t-neu">NEUTRAL →</b></div>
+        <div class="row"><span>Legacy SaaS</span><div class="bar"><i style="width:26%;background:var(--cool)"></i></div><b class="tag t-cool">COOLING ↓</b></div>
+      </div>
+      <div class="spot">
+        <div class="spotcard"><span>Signal for you</span><strong>ETF inflows at 6-week high</strong></div>
+        <div class="spotcard"><span>Watch next</span><strong>Rate decision · 2 days</strong></div>
+      </div>
+    </div>
+    <div class="panel car">
+      <h3><span style="color:var(--tune)">◆</span> Career Pulse <em>30 / 90-DAY TRAJECTORY</em></h3>
+      <div class="subhead">Industry moves · hiring &amp; skill demand</div>
+      <div class="rows">
+        <div class="row"><span>Agent Infrastructure</span><div class="bar"><i style="width:94%;background:var(--hot)"></i></div><b class="tag t-hot">↑↑ +31%</b></div>
+        <div class="row"><span>AI Data Engineering</span><div class="bar"><i style="width:76%;background:var(--warm)"></i></div><b class="tag t-warm">↑ +18%</b></div>
+        <div class="row"><span>Streaming / Kafka</span><div class="bar"><i style="width:52%;background:#8494AB"></i></div><b class="tag t-neu">→ steady</b></div>
+        <div class="row"><span>Traditional ETL</span><div class="bar"><i style="width:22%;background:var(--cool)"></i></div><b class="tag t-cool">↓ −14%</b></div>
+      </div>
+      <div class="spot">
+        <div class="spotcard"><span>Top skill today</span><strong>Agent Infrastructure</strong></div>
+        <div class="spotcard"><span>Top job for you</span><strong>Staff AI Data Engineer</strong></div>
+      </div>
+    </div>
+  </div>
+  <div class="kicker">Same world. Different persona. <b>Completely different intelligence.</b></div>
+  <div class="brandmark">World Tune</div><div class="pageno">03 / 05</div>
+</section>
+
+<section class="slide" id="s4">
+  <div class="eyebrow">AI intelligence engine</div>
+  <h2 style="margin-top:10px">From Information <span style="color:var(--text-3)">→</span> Intelligence <span style="color:var(--text-3)">→</span> Trajectory</h2>
+  <div class="flow">
+    <div class="rail">
+      <div class="stg src"><div class="dotcol"><div class="dot"></div><div class="stem"></div></div>
+        <div class="body"><h4>GLOBAL SIGNALS</h4><p>News · Markets · Jobs · Technology</p></div></div>
+      <div class="stg"><div class="dotcol"><div class="dot"></div><div class="stem"></div></div>
+        <div class="body"><h4>INGEST</h4><p>Continuous collection · dedupe · timeline</p></div></div>
+      <div class="stg"><div class="dotcol"><div class="dot"></div><div class="stem"></div></div>
+        <div class="body"><h4>UNDERSTAND</h4><p>Entities · Topics · Sectors · Skills</p></div></div>
+      <div class="stg"><div class="dotcol"><div class="dot"></div><div class="stem"></div></div>
+        <div class="body"><h4>PERSONALIZE</h4><p>Persona matching + relevance ranking</p></div></div>
+      <div class="stg"><div class="dotcol"><div class="dot"></div><div class="stem"></div></div>
+        <div class="body"><h4>DETECT</h4><p>Momentum · Hot / Cold · Emerging trends</p></div></div>
+      <div class="stg"><div class="dotcol"><div class="dot"></div></div>
+        <div class="body"><h4 style="color:var(--tune)">PREDICT</h4><p>Trajectory · Confidence · Evidence</p></div></div>
+    </div>
+    <div>
+      <div class="insight">
+        <div class="lab">AI insight card</div>
+        <div class="ttl">Agent<br>Infrastructure</div>
+        <span class="tag t-hot" style="font-size:12px">HOT ↑</span>
+        <div class="metrics">
+          <div class="metric">Relevance to you <b>94<span style="color:var(--text-3);font-size:11px">/100</span></b></div>
+          <div class="metric">Demand change <b style="color:var(--hot)">+31%</b></div>
+          <div class="metric">Trajectory <b style="color:var(--tune)">Accelerating</b></div>
+          <div class="metric">Confidence <b>High</b></div>
+        </div>
+        <svg class="spark" viewBox="0 0 260 62" width="100%" height="62" role="img" aria-label="Demand rising over 90 days, accelerating">
+          <line x1="0" y1="56" x2="260" y2="56" stroke="rgba(146,171,204,.2)"/>
+          <line x1="0" y1="30" x2="260" y2="30" stroke="rgba(146,171,204,.1)"/>
+          <path d="M2 52 L44 49 L86 44 L128 37 L170 28 L212 16 L252 4 L252 56 L2 56 Z" fill="rgba(79,227,193,.16)"/>
+          <path d="M2 52 L44 49 L86 44 L128 37 L170 28 L212 16 L252 4" fill="none" stroke="#4FE3C1" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="252" cy="4" r="4" fill="#4FE3C1"/>
+          <text x="0" y="14" fill="#5F7189" font-family="IBM Plex Mono, monospace" font-size="9">DEMAND · 90D</text>
+        </svg>
+      </div>
+      <div class="notonly">not summarizing news → <u>ranking · detecting · forecasting</u></div>
+    </div>
+  </div>
+  <div class="brandmark">World Tune</div><div class="pageno">04 / 05</div>
+</section>
+
+<section class="slide" id="s5">
+  <div class="eyebrow">Vision</div>
+  <div class="stack" style="margin-top:18px">
+    <div class="layer p"><h3>WORLD PULSE</h3><p>Understands what's happening in the world.</p></div>
+    <div class="arrowx">→</div>
+    <div class="layer t"><h3>WORLD TUNE</h3><p>Understands what it means for YOU.</p></div>
+  </div>
+  <div class="horizon">
+    <div class="hz now"><span>TODAY</span><div class="v"><i>Finance</i><i>Career</i></div></div>
+    <div class="hz"><span>TOMORROW</span><div class="v"><i>Business</i><i>Travel</i><i>Technology</i><i>Geopolitics</i><i>More</i></div></div>
+  </div>
+  <div class="closing">The future isn't about consuming more information.<br>It's about knowing <em>what deserves your attention</em> — and what may matter next.</div>
+  <div class="signoff"><b>WORLD TUNE</b><span>The world, tuned to you.</span></div>
+  <div class="brandmark">World Tune</div><div class="pageno">05 / 05</div>
+</section>
+
+</div></div>
+
+<div id="nav">
+  <button id="prev" aria-label="Previous slide">‹</button>
+  <div class="dots" id="dots"></div>
+  <button id="next" aria-label="Next slide">›</button>
+  <code id="count">01/05</code>
+</div>
+
+<script>
+(function(){
+  var stage=document.getElementById('stage');
+  function fit(){
+    var s=Math.min(window.innerWidth/1300,(window.innerHeight-70)/730);
+    stage.style.transform='scale('+s+')';
+  }
+  window.addEventListener('resize',fit);fit();
+
+  var words=["Fed holds rates","Series B: $40M","GPU supply tightens","Nifty +0.4%","Hiring freeze","BTC 4h breakout","New LLM release","Layoffs: 300","Rust adoption","ETF inflows","Oil -1.2%","Kafka 4.0","Staff SRE role","Vector DB merger","EU AI Act","Gold record high","Token prices drop","Remote roles -8%","Spark 4 ships","Solar capex","Chip export ban","Yen weakens","Seed round","Agent frameworks","Data contracts","SOC2 audit","Bond yields","Warehouse pricing","Junior roles -12%","Copilot usage","Airline earnings","Retail CPI","Fintech licence","Quantum paper","Open weights","GPU rental rates","Cloud egress fees","Dev tool acquired","Pipeline outage","Stablecoin rules","Wage growth","Semi capex","Hiring in Pune","Streaming SQL","Model distillation","Crypto custody","Ad spend dip","Battery costs","Port delays","IPO filing","Dividend cut","Talent war","MLOps spend","Freelance demand","Visa backlog","Edge inference","Latency SLOs","Rate cut odds","Course launch","Certification","Bank merger","REIT yields"];
+  var cls=["","a","b","c","",""],nz=document.getElementById('noise'),h='';
+  for(var i=0;i<words.length;i++){h+='<div class="n '+cls[i%cls.length]+'">'+words[i]+'</div>';}
+  nz.innerHTML=h;
+
+  var c=document.getElementById('fx'),ctx=c.getContext('2d'),W=1280,H=720;
+  var cx=960,cy=360,P=[],reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  for(var j=0;j<170;j++){
+    P.push({a:Math.random()*Math.PI*2,r:200+Math.random()*560,sp:.5+Math.random()*1.4,
+            s:.6+Math.random()*1.5,hue:Math.random()<.3?'124,107,255':'79,227,193'});
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';
+    for(var i=0;i<P.length;i++){
+      var p=P[i],x=cx+Math.cos(p.a)*p.r,y=cy+Math.sin(p.a)*p.r*.72;
+      var t=Math.max(0,1-(p.r-120)/700);
+      ctx.beginPath();ctx.fillStyle='rgba('+p.hue+','+(0.10+t*0.55)+')';
+      ctx.arc(x,y,p.s,0,6.3);ctx.fill();
+      if(p.r<300){
+        ctx.beginPath();ctx.strokeStyle='rgba('+p.hue+','+(0.16*(1-p.r/300))+')';ctx.lineWidth=.7;
+        ctx.moveTo(x,y);ctx.lineTo(cx,cy);ctx.stroke();
+      }
+      if(!reduce){p.r-=p.sp;if(p.r<110){p.r=380+Math.random()*400;p.a=Math.random()*Math.PI*2;}}
+    }
+    ctx.globalCompositeOperation='source-over';
+    if(!reduce)requestAnimationFrame(draw);
+  }
+  draw();
+
+  var slides=[].slice.call(document.querySelectorAll('.slide')),cur=0,
+      dots=document.getElementById('dots'),count=document.getElementById('count');
+  slides.forEach(function(_,i){
+    var d=document.createElement('i');d.tabIndex=0;d.setAttribute('role','button');
+    d.setAttribute('aria-label','Go to slide '+(i+1));
+    d.addEventListener('click',function(){go(i)});
+    d.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go(i)}});
+    dots.appendChild(d);
+  });
+  function go(i){
+    cur=(i+slides.length)%slides.length;
+    slides.forEach(function(s,k){s.classList.toggle('on',k===cur)});
+    [].slice.call(dots.children).forEach(function(d,k){d.classList.toggle('on',k===cur)});
+    count.textContent='0'+(cur+1)+'/05';
+  }
+  document.getElementById('next').onclick=function(){go(cur+1)};
+  document.getElementById('prev').onclick=function(){go(cur-1)};
+  window.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();go(cur+1)}
+    if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(cur-1)}
+  });
+  go(0);
+})();
+</script>
