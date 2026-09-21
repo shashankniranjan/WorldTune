@@ -33,14 +33,187 @@ from app.predictions.store import CAREER_OUTCOMES, FINANCIAL_OUTCOMES, resolved_
 from app.providers import registry
 from app.repositories.persona import get_persona, upsert_persona
 from app.schemas.persona import Persona, PersonaUpdate
+from app.schemas.world_shift import (
+    EvidenceResponse, RefreshConfiguration, RefreshConfigurationUpdate, RefreshStatus,
+    RelationshipsResponse, WorldShiftListResponse, WorldShiftSnapshot,
+)
 from app.seed.demo import counts as seed_counts
 from app.seed.demo import seed_demo
 from app.services.career import career_pulse, job_matches, skill_signals, technology_velocity
 from app.services.daily_tune import build_daily_tune, persist_daily_tune
 from app.services.dashboard import build_dashboard
 from app.services.financial import asset_pulse, financial_pulse
+from app.services.world_shifts import get_shift, list_shifts
+from app.services.world_shift_contract import (
+    WorldShiftDataUnavailable,
+    WorldShiftSnapshotMismatch,
+    get_contract_evidence,
+    get_contract_relationships,
+    get_contract_shift,
+    list_contract_shifts,
+)
+from app.services.world_shift_refresh import refresh_service, refresh_status_dict
+from app.services.world_shift_runtime import get_refresh_configuration, update_refresh_configuration
 
 router = APIRouter()
+
+
+# --- canonical frontend World Shift contract -------------------------------
+
+def _contract_persona(value: str | None) -> str:
+    return sanitize_query(value or "tech", max_length=40) or "tech"
+
+
+def _contract_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, WorldShiftSnapshotMismatch):
+        return HTTPException(status_code=409, detail={"code": "SNAPSHOT_MISMATCH", "message": str(exc)})
+    if isinstance(exc, WorldShiftDataUnavailable):
+        return HTTPException(status_code=503, detail={"code": "SNAPSHOT_UNAVAILABLE", "message": str(exc)})
+    return HTTPException(status_code=404, detail="World Shift not found")
+
+
+@router.get("/world-shifts", response_model=WorldShiftListResponse, tags=["world-state"])
+def contract_world_shifts(limit: int = Query(20, ge=1, le=100)) -> WorldShiftListResponse:
+    try:
+        return list_contract_shifts(clamp_limit(limit, default=20))
+    except (WorldShiftDataUnavailable, WorldShiftSnapshotMismatch) as exc:
+        raise _contract_error(exc) from exc
+
+
+@router.post("/world-shifts/refresh", response_model=RefreshStatus, tags=["world-state"])
+def refresh_world_shifts() -> RefreshStatus:
+    """Queue a refresh; duplicate active requests reuse the existing run."""
+    return RefreshStatus.model_validate(refresh_status_dict(refresh_service.request_refresh()))
+
+
+@router.get("/world-shifts/refresh/{run_id}", response_model=RefreshStatus, tags=["world-state"])
+def world_shift_refresh_status(run_id: str) -> RefreshStatus:
+    try:
+        return RefreshStatus.model_validate(refresh_status_dict(
+            refresh_service.get(sanitize_query(run_id, max_length=80))
+        ))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Refresh run not found") from exc
+
+
+@router.get("/world-shifts/refresh-configuration", response_model=RefreshConfiguration, tags=["world-state"])
+def world_shift_refresh_configuration() -> RefreshConfiguration:
+    return get_refresh_configuration()
+
+
+@router.put("/world-shifts/refresh-configuration", response_model=RefreshConfiguration, tags=["world-state"])
+def configure_world_shift_refresh(payload: RefreshConfigurationUpdate) -> RefreshConfiguration:
+    try:
+        return update_refresh_configuration(
+            interval_seconds=payload.interval_seconds,
+            web_research_enabled=payload.web_research_enabled,
+            web_results_per_shift=payload.web_results_per_shift,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/world-shifts/{shift_id}", response_model=WorldShiftSnapshot, tags=["world-state"])
+def contract_world_shift(
+    shift_id: str,
+    persona: str | None = Query("tech"),
+    snapshot_id: str | None = Query(None, alias="snapshotId"),
+) -> WorldShiftSnapshot:
+    try:
+        return get_contract_shift(
+            sanitize_query(shift_id, max_length=100), _contract_persona(persona), snapshot_id
+        )
+    except (WorldShiftDataUnavailable, WorldShiftSnapshotMismatch, KeyError) as exc:
+        raise _contract_error(exc) from exc
+
+
+@router.get("/world-shifts/{shift_id}/relationships", response_model=RelationshipsResponse, tags=["world-state"])
+def contract_world_shift_relationships(
+    shift_id: str,
+    persona: str | None = Query("tech"),
+    snapshot_id: str | None = Query(None, alias="snapshotId"),
+) -> RelationshipsResponse:
+    try:
+        return get_contract_relationships(
+            sanitize_query(shift_id, max_length=100), _contract_persona(persona), snapshot_id
+        )
+    except (WorldShiftDataUnavailable, WorldShiftSnapshotMismatch, KeyError) as exc:
+        raise _contract_error(exc) from exc
+
+
+@router.get("/world-shifts/{shift_id}/evidence", response_model=EvidenceResponse, tags=["world-state"])
+def contract_world_shift_evidence(
+    shift_id: str,
+    persona: str | None = Query("tech"),
+    snapshot_id: str | None = Query(None, alias="snapshotId"),
+    evidence_type: str | None = Query(None, alias="type", max_length=40),
+    source: str | None = Query(None, max_length=120),
+    tag: str | None = Query(None, max_length=80),
+    confidence: str | None = Query(None, pattern="^(low|medium|high)$"),
+    limit: int = Query(100, ge=1, le=100),
+) -> EvidenceResponse:
+    try:
+        return get_contract_evidence(
+            sanitize_query(shift_id, max_length=100), _contract_persona(persona), snapshot_id,
+            evidence_type=sanitize_query(evidence_type, max_length=40) if evidence_type else None,
+            source=sanitize_query(source, max_length=120) if source else None,
+            tag=sanitize_query(tag, max_length=80) if tag else None,
+            confidence=confidence, limit=clamp_limit(limit, default=100),
+        )
+    except (WorldShiftDataUnavailable, WorldShiftSnapshotMismatch, KeyError) as exc:
+        raise _contract_error(exc) from exc
+
+
+# --- evidence-backed WorldTune shifts --------------------------------------
+
+@router.get("/world/shifts", tags=["world-state"])
+def world_shifts(limit: int = Query(20, ge=1, le=100)) -> dict:
+    """Latest user-facing shifts; raw statistics stay in the evidence section."""
+    entries = list_shifts(clamp_limit(limit, default=20))
+    return {"count": len(entries), "entries": entries,
+            "note": "GDELT-only discovery candidates; associations are not causal."}
+
+
+@router.get("/world/shifts/{shift_id}", tags=["world-state"])
+def world_shift_detail(shift_id: str) -> dict:
+    shift = get_shift(sanitize_query(shift_id, max_length=100))
+    if shift is None:
+        raise HTTPException(status_code=404, detail="World Shift not found")
+    return shift
+
+
+@router.get("/world/shifts/{shift_id}/evidence", tags=["world-state"])
+def world_shift_evidence(shift_id: str) -> dict:
+    shift = get_shift(sanitize_query(shift_id, max_length=100))
+    if shift is None:
+        raise HTTPException(status_code=404, detail="World Shift not found")
+    return {"shift_id": shift["shift_id"], "representative_evidence": shift["representative_evidence"],
+            "evidence": shift["evidence"], "provenance": shift["provenance"]}
+
+
+@router.get("/world/shifts/{shift_id}/relationships", tags=["world-state"])
+def world_shift_relationships(shift_id: str) -> dict:
+    shift = get_shift(sanitize_query(shift_id, max_length=100))
+    if shift is None:
+        raise HTTPException(status_code=404, detail="World Shift not found")
+    return {"shift_id": shift["shift_id"], "relationships": shift["related_topics"],
+            "note": "Relationships are same-day associations, not causal claims."}
+
+
+@router.get("/world/shifts/{shift_id}/tech-impact", tags=["world-state"])
+def world_shift_tech_impact(shift_id: str) -> dict:
+    shift = get_shift(sanitize_query(shift_id, max_length=100))
+    if shift is None:
+        raise HTTPException(status_code=404, detail="World Shift not found")
+    return {"shift_id": shift["shift_id"], "impact": shift["tech_impact"]}
+
+
+@router.get("/world/shifts/{shift_id}/finance-impact", tags=["world-state"])
+def world_shift_finance_impact(shift_id: str) -> dict:
+    shift = get_shift(sanitize_query(shift_id, max_length=100))
+    if shift is None:
+        raise HTTPException(status_code=404, detail="World Shift not found")
+    return {"shift_id": shift["shift_id"], "impact": shift["finance_impact"]}
 
 
 def _persona_or_404(session: Session, persona_id: str | None = None) -> Persona:
@@ -52,6 +225,19 @@ def _persona_or_404(session: Session, persona_id: str | None = None) -> Persona:
 
 
 # --- health / system ---------------------------------------------------------
+
+@router.get("/", tags=["system"])
+def service_root() -> dict:
+    """Human-readable status for operators opening the API root in a browser."""
+    return {
+        "service": "worldtune",
+        "status": "ok",
+        "version": "0.1.0",
+        "frontend": "http://localhost:3000",
+        "health": "/health",
+        "world_shifts": "/world-shifts",
+    }
+
 
 @router.get("/health", tags=["system"])
 def health() -> dict:
