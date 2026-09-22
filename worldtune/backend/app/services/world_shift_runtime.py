@@ -10,7 +10,7 @@ from app.db import session_scope
 from app.models import WorldShiftRefreshRunORM, WorldShiftRuntimeConfigORM
 from app.schemas.world_shift import RefreshConfiguration
 
-ALLOWED_INTERVALS = (300, 3600, 43200)
+ALLOWED_INTERVALS = (300, 3600, 43200, 86400)
 
 
 def _row(session) -> WorldShiftRuntimeConfigORM:

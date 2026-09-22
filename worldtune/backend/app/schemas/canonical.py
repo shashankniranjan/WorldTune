@@ -43,6 +43,9 @@ class CanonicalNewsEvent(BaseModel):
     entities: list[str] = Field(default_factory=list)
     tickers: list[str] = Field(default_factory=list)
     sectors: list[str] = Field(default_factory=list)
+    # Provider-supplied lead image (e.g. GDELT's `socialimage`), when present.
+    # Free to capture, never fabricated -- absent means None, not a placeholder.
+    image_url: Optional[str] = None
 
 
 class CanonicalJob(BaseModel):

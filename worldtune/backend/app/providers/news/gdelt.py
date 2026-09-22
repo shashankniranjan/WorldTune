@@ -92,6 +92,7 @@ class GDELTNewsProvider(NewsProvider):
             if published is None:
                 continue
             keys = graph.resolve_text(title)
+            social_image = (art.get("socialimage") or "").strip()
             events.append(
                 CanonicalNewsEvent(
                     title=title,
@@ -105,6 +106,7 @@ class GDELTNewsProvider(NewsProvider):
                     entities=[graph.label(k) for k in keys],
                     tickers=graph.tickers_for(keys),
                     sectors=graph.sectors_for(keys),
+                    image_url=social_image or None,
                 )
             )
         return events

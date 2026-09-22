@@ -40,7 +40,7 @@ class PersonaORM(Base):
     location: Mapped[dict] = mapped_column(JSONColumn, default=dict)
     # {"current_role", "years_experience", "target_roles", "skills", "industry"}
     career: Mapped[dict] = mapped_column(JSONColumn, default=dict)
-    # {"asset_classes", "watchlist", "sectors", "risk_appetite"}
+    # {"asset_classes", "watchlist", "holdings", "sectors", "risk_appetite"}
     financial: Mapped[dict] = mapped_column(JSONColumn, default=dict)
     # {"learning_topics", "content_depth", "daily_time_budget_minutes"}
     preferences: Mapped[dict] = mapped_column(JSONColumn, default=dict)

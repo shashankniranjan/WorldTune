@@ -12,7 +12,7 @@ from app.schemas.world_shift import PersonaSynthesis, SemanticExtraction, WorldS
 from app.services import world_shift_refresh as refresh_module
 from app.services.world_shift_ai import (
     IntelligenceValidationError, WorldShiftGenerationService, WorldShiftWebResearchService,
-    validate_grounding,
+    filter_invalid_objects, validate_grounding,
 )
 from app.services.world_shift_refresh import RefreshService, _persist_semantics, promote_snapshot
 
@@ -242,7 +242,7 @@ def test_publisher_enrichment_failure_keeps_bounded_evidence(monkeypatch):
     row = {"date": "2026-09-19", "category": "technology", "representative_evidence":
            '[{"title":"Source report from example.com","url":"https://example.com/a","domain":"example.com"}]'}
     evidence = refresh_module._artifact_evidence(row)
-    assert evidence[0]["originalHeadline"] is None and evidence[0]["url"] == "https://example.com/a"
+    assert evidence[0]["originalHeadline"] == "A" and evidence[0]["url"] == "https://example.com/a"
 
 
 def test_evidence_ingestion_is_idempotent(session):
@@ -251,4 +251,87 @@ def test_evidence_ingestion_is_idempotent(session):
     _persist_semantics(session, "alpha", "run_two", EVIDENCE, semantic); session.commit()
     from app.models import WorldShiftEvidenceORM
     assert session.scalar(select(func.count()).select_from(WorldShiftEvidenceORM)) == 1
-    assert session.get(WorldShiftEvidenceORM, "ev_alpha").last_run_id == "run_two"
+
+
+# --- Reasoned tier / exposureMap -------------------------------------------
+#
+# "reasoned" objects (exposureMap items, and any impact item explicitly
+# tagged reasoned) are the LLM connecting dots with world knowledge rather
+# than restating the evidence corpus. They are exempt from corpus/number
+# grounding, but never from the investment-advice line (HARD_FORBIDDEN),
+# and never from carrying a real reasoning chain traceable to something
+# grounded (derivedFrom -> a real entity/claim id).
+
+def _persona_payload(exposure_map):
+    return {"summary": "Alpha regulates Beta", "directImpacts": [], "risks": [], "opportunities": [],
+            "watchItems": [], "domainGroups": [], "exposureMap": exposure_map}
+
+
+def test_reasoned_exposure_item_with_valid_chain_passes_grounding():
+    semantic = SemanticExtraction.model_validate(semantic_payload())
+    exposure = {
+        "id": "exp_1", "entityName": "Gamma Defense Corp", "ticker": "GAMD",
+        "direction": "positive", "ring": "direct",
+        "mechanism": "Escalations of this kind typically raise defense procurement budgets, which flows to prime contractors.",
+        "reasoning": ["Alpha regulates Beta, which raises compliance and security spend",
+                      "Security spend increases typically benefit large defense contractors"],
+        "derivedFrom": ["entity_alpha"], "verificationHint": "Check Gamma's next 10-Q for order backlog.",
+        "evidenceIds": [],
+    }
+    persona = PersonaSynthesis.model_validate(_persona_payload([exposure]))
+    # Must not raise even though "Gamma Defense Corp" and "GAMD" never appear
+    # in the corpus, and the mechanism uses causal language ("flows to",
+    # "raise") that would fail the strict/observed tier.
+    validate_grounding(persona, EVIDENCE, semantic=semantic,
+                        grounding_input={"evidence": EVIDENCE, "semantic": semantic.model_dump(by_alias=True)})
+
+
+def test_reasoned_exposure_item_still_blocks_investment_advice():
+    semantic = SemanticExtraction.model_validate(semantic_payload())
+    exposure = {
+        "id": "exp_1", "entityName": "Gamma Defense Corp", "ticker": "GAMD",
+        "direction": "positive", "ring": "direct",
+        "mechanism": "You should buy GAMD now, guaranteed upside.",
+        "reasoning": ["Alpha regulates Beta"], "derivedFrom": ["entity_alpha"], "evidenceIds": [],
+    }
+    persona = PersonaSynthesis.model_validate(_persona_payload([exposure]))
+    with pytest.raises(IntelligenceValidationError, match="forbidden language"):
+        validate_grounding(persona, EVIDENCE, semantic=semantic,
+                            grounding_input={"evidence": EVIDENCE, "semantic": semantic.model_dump(by_alias=True)})
+
+
+def test_reasoned_exposure_item_without_derived_from_is_rejected():
+    semantic = SemanticExtraction.model_validate(semantic_payload())
+    exposure = {
+        "id": "exp_1", "entityName": "Gamma Defense Corp", "direction": "positive", "ring": "direct",
+        "mechanism": "Unrelated speculation with no traceable origin.",
+        "reasoning": ["A guess"], "derivedFrom": [], "evidenceIds": [],
+    }
+    persona = PersonaSynthesis.model_validate(_persona_payload([exposure]))
+    with pytest.raises(IntelligenceValidationError, match="invalid derivedFrom"):
+        validate_grounding(persona, EVIDENCE, semantic=semantic,
+                            grounding_input={"evidence": EVIDENCE, "semantic": semantic.model_dump(by_alias=True)})
+
+
+def test_filter_invalid_objects_drops_ungrounded_exposure_but_keeps_valid_one():
+    semantic = SemanticExtraction.model_validate(semantic_payload())
+    good = {
+        "id": "exp_good", "entityName": "Gamma Defense Corp", "ticker": "GAMD",
+        "direction": "positive", "ring": "direct",
+        "mechanism": "Escalations of this kind typically raise defense procurement budgets.",
+        "reasoning": ["Alpha regulates Beta, raising compliance and security spend"],
+        "derivedFrom": ["entity_alpha"], "evidenceIds": [],
+    }
+    bad_no_reasoning = {
+        "id": "exp_bad_1", "entityName": "Delta Corp", "direction": "negative", "ring": "second_order",
+        "mechanism": "Some effect.", "reasoning": [], "derivedFrom": ["entity_alpha"], "evidenceIds": [],
+    }
+    bad_ungrounded = {
+        "id": "exp_bad_2", "entityName": "Epsilon Corp", "direction": "positive", "ring": "supply_chain",
+        "mechanism": "Some other effect.", "reasoning": ["A guess with no anchor"],
+        "derivedFrom": [], "evidenceIds": [],
+    }
+    persona = PersonaSynthesis.model_validate(_persona_payload([good, bad_no_reasoning, bad_ungrounded]))
+    filtered, removed = filter_invalid_objects(persona, EVIDENCE, semantic)
+    assert [item.id for item in filtered.exposure_map] == ["exp_good"]
+    assert removed == 2

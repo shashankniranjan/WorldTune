@@ -25,6 +25,10 @@ class WorldShiftListItem(ContractModel):
     direction: str
     relationship_reason: str | None = Field(default=None, alias="relationshipReason")
     relationship_confidence: str | None = Field(default=None, alias="relationshipConfidence")
+    # True for up to 3 topics/day that are spiking (by attention z-score) but
+    # have no hand-written editorial context -- i.e. discovered, not curated.
+    # See scripts/build_world_shifts.py's trending pass.
+    is_trending: bool = Field(default=False, alias="isTrending")
 
 
 class Evidence(ContractModel):
@@ -71,6 +75,38 @@ class IntelligencePoint(ContractModel):
     claim_ids: list[str] = Field(default_factory=list, alias="claimIds")
 
 
+class ContextBrief(ContractModel):
+    what_it_is: str = Field(alias="whatItIs")
+    how_it_started: str = Field(alias="howItStarted")
+    latest: str
+    what_it_is_evidence_ids: list[str] = Field(default_factory=list, alias="whatItIsEvidenceIds")
+    how_it_started_evidence_ids: list[str] = Field(default_factory=list, alias="howItStartedEvidenceIds")
+    latest_evidence_ids: list[str] = Field(default_factory=list, alias="latestEvidenceIds")
+
+
+class TimelineEvent(ContractModel):
+    date: str
+    title: str
+    summary: str
+    status: Literal["confirmed", "reported", "claimed", "disputed"] = "reported"
+    evidence_ids: list[str] = Field(default_factory=list, alias="evidenceIds")
+
+
+class ActorBrief(ContractModel):
+    name: str
+    role: str
+    position: str
+    status: Literal["confirmed", "reported", "claimed", "disputed"] = "reported"
+    evidence_ids: list[str] = Field(default_factory=list, alias="evidenceIds")
+
+
+class FactFigure(ContractModel):
+    value: str
+    label: str
+    context: str
+    evidence_ids: list[str] = Field(default_factory=list, alias="evidenceIds")
+
+
 class ImpactItem(ContractModel):
     id: str
     title: str
@@ -79,7 +115,11 @@ class ImpactItem(ContractModel):
     magnitude: str | None = None
     evidence_ids: list[str] = Field(alias="evidenceIds")
     claim_ids: list[str] = Field(default_factory=list, alias="claimIds")
-    evidence_class: Literal["observed", "calculated", "inferred", "associated"] = Field(
+    # "reasoned" marks the LLM connecting dots from world knowledge rather than
+    # restating the evidence corpus (e.g. "conflict -> defense procurement ->
+    # named contractor"). It is never grounding-checked against the corpus the
+    # way observed/calculated/inferred/associated are -- see world_shift_ai.py.
+    evidence_class: Literal["observed", "calculated", "inferred", "associated", "reasoned"] = Field(
         default="inferred", alias="evidenceClass"
     )
     mechanism: str | None = None
@@ -87,6 +127,32 @@ class ImpactItem(ContractModel):
     confidence: Literal["low", "medium", "high"] = "low"
     counter_evidence_ids: list[str] = Field(default_factory=list, alias="counterEvidenceIds")
     invalidators: list[str] = Field(default_factory=list)
+    # Populated only when evidence_class == "reasoned": the explicit dot-by-dot
+    # chain a reader can audit, and what grounded entity/claim it departs from.
+    reasoning: list[str] = Field(default_factory=list)
+    derived_from: list[str] = Field(default_factory=list, alias="derivedFrom")
+    verification_hint: str | None = Field(default=None, alias="verificationHint")
+
+
+class ExposureItem(ContractModel):
+    """A reasoned (not observed) company-level exposure: who might be affected,
+    which direction, and why -- the answer to "which companies get impacted"."""
+
+    id: str
+    entity_name: str = Field(alias="entityName")
+    ticker: str | None = None
+    direction: Literal["positive", "negative", "mixed"]
+    ring: Literal["direct", "supply_chain", "second_order"]
+    mechanism: str
+    reasoning: list[str] = Field(default_factory=list)
+    confidence: Literal["low", "medium", "high"] = "low"
+    derived_from: list[str] = Field(default_factory=list, alias="derivedFrom")
+    verification_hint: str | None = Field(default=None, alias="verificationHint")
+    horizons: list[Literal["near_term", "long_term"]] = Field(default_factory=list)
+    countries: list[str] = Field(default_factory=list)
+    opportunity_type: str | None = Field(default=None, alias="opportunityType")
+    evidence_ids: list[str] = Field(default_factory=list, alias="evidenceIds")
+    evidence_class: Literal["reasoned"] = Field(default="reasoned", alias="evidenceClass")
 
 
 class Overview(ContractModel):
@@ -101,6 +167,15 @@ class Overview(ContractModel):
     watch_next: list[IntelligencePoint] = Field(default_factory=list, alias="watchNext")
     drivers: list[IntelligencePoint] = Field(default_factory=list)
     contradictions: list[IntelligencePoint] = Field(default_factory=list)
+    context_brief: ContextBrief | None = Field(default=None, alias="contextBrief")
+    timeline: list[TimelineEvent] = Field(default_factory=list)
+    actors: list[ActorBrief] = Field(default_factory=list)
+    facts_and_figures: list[FactFigure] = Field(default_factory=list, alias="factsAndFigures")
+    # Section headings travel with the content so a heading can never describe
+    # a different shift than the text beneath it. Optional: clients keep their
+    # own defaults for snapshots that do not carry them.
+    timeline_kicker: str | None = Field(default=None, alias="timelineKicker")
+    timeline_heading: str | None = Field(default=None, alias="timelineHeading")
 
 
 class RelationshipNode(ContractModel):
@@ -197,6 +272,18 @@ class Impact(ContractModel):
     opportunities: list[ImpactItem]
     risks: list[ImpactItem]
     watch_items: list[ImpactItem] = Field(alias="watchItems")
+    # Reasoned company-level exposure (see ExposureItem). Explicitly labelled
+    # inference, never a recommendation -- the UI must render it as such.
+    exposure_map: list[ExposureItem] = Field(default_factory=list, alias="exposureMap")
+    # Persona-specific section headings. Carried in the payload for the same
+    # reason as the overview headings: the wording is part of the analysis,
+    # not a constant in the frontend.
+    kicker: str | None = None
+    headline: str | None = None
+    exposure_headline: str | None = Field(default=None, alias="exposureHeadline")
+    exposure_blurb: str | None = Field(default=None, alias="exposureBlurb")
+    lens_title: str | None = Field(default=None, alias="lensTitle")
+    lens_blurb: str | None = Field(default=None, alias="lensBlurb")
 
 
 class DomainEntity(ContractModel):
@@ -238,6 +325,7 @@ class ShiftOverview(ContractModel):
     updated_at: str = Field(alias="updatedAt")
     overview: Overview
     related_shifts: list[WorldShiftListItem] = Field(alias="relatedShifts")
+    is_trending: bool = Field(default=False, alias="isTrending")
 
 
 class WorldShiftSnapshot(SnapshotMeta):
@@ -338,6 +426,10 @@ class WorldShiftSynthesis(ContractModel):
     drivers: list[IntelligencePoint] = Field(default_factory=list)
     contradictions: list[IntelligencePoint] = Field(default_factory=list)
     scenarios: list[Scenario] = Field(default_factory=list)
+    context_brief: ContextBrief | None = Field(default=None, alias="contextBrief")
+    timeline: list[TimelineEvent] = Field(default_factory=list)
+    actors: list[ActorBrief] = Field(default_factory=list)
+    facts_and_figures: list[FactFigure] = Field(default_factory=list, alias="factsAndFigures")
 
 
 class PersonaSynthesis(ContractModel):
@@ -349,6 +441,7 @@ class PersonaSynthesis(ContractModel):
     opportunities: list[ImpactItem]
     watch_items: list[ImpactItem] = Field(alias="watchItems")
     domain_groups: list[DomainGroup] = Field(alias="domainGroups")
+    exposure_map: list[ExposureItem] = Field(default_factory=list, alias="exposureMap")
 
 
 class RefreshProgress(ContractModel):

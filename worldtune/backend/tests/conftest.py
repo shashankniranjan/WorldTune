@@ -24,6 +24,7 @@ FIXED_NOW = datetime(2025, 9, 13, 12, 0, 0, tzinfo=timezone.utc)
 def settings(monkeypatch):
     monkeypatch.setattr(config_module.settings, "demo_mode", True)
     monkeypatch.setattr(config_module.settings, "auto_seed", False)
+    monkeypatch.setattr(config_module.settings, "world_shift_auto_refresh_enabled", False)
     monkeypatch.setattr(config_module.settings, "llm_api_key", None)
     monkeypatch.setattr(config_module.settings, "adzuna_app_id", None)
     monkeypatch.setattr(config_module.settings, "adzuna_app_key", None)

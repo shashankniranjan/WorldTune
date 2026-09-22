@@ -30,6 +30,10 @@ class CareerProfile(BaseModel):
 class FinancialProfile(BaseModel):
     asset_classes: list[str] = Field(default_factory=list)
     watchlist: list[str] = Field(default_factory=list)
+    # User-declared exposures used for relevance and impact explanations.
+    # These are labels/symbols only; quantities and account credentials do not
+    # belong in the persona or news pipeline.
+    holdings: list[str] = Field(default_factory=list)
     sectors: list[str] = Field(default_factory=list)
     risk_appetite: Literal["low", "medium", "high"] = "medium"
 
@@ -81,8 +85,9 @@ DEMO_PERSONA = PersonaBase(
         industry="technology",
     ),
     financial=FinancialProfile(
-        asset_classes=["crypto", "equities"],
+        asset_classes=["crypto", "commodities", "equities"],
         watchlist=["BTC", "ETH"],
+        holdings=["gold", "silver", "HINDALCO"],
         sectors=["AI", "technology", "crypto"],
         risk_appetite="medium",
     ),

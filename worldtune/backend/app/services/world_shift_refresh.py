@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -27,6 +28,7 @@ from app.schemas.world_shift import (
 )
 from app.services.world_shift_ai import WorldShiftGenerationService, WorldShiftWebResearchService
 from app.services.world_shift_contract import _compose, _latest_rows, _rows, _slug, _snapshot_meta
+from app.services.world_shift_editorial import CONFLICT_ID
 from app.services.world_shift_runtime import get_runtime_values
 from app.providers.news.gdelt import GDELTNewsProvider
 
@@ -62,7 +64,10 @@ def _live_gdelt_rows(base_rows: tuple[dict, ...]) -> tuple[dict, ...]:
             seen = {str(item.get("url")) for item in records}
             for event in matched:
                 if event.url and event.url not in seen:
-                    records.append({"title": event.title, "url": event.url, "domain": event.domain})
+                    records.append({
+                        "title": event.title, "url": event.url, "domain": event.domain,
+                        "imageUrl": event.image_url,
+                    })
                     seen.add(event.url)
             row["representative_evidence"] = json.dumps(records[-10:])
             row["evidence_article_count"] = int(row.get("evidence_article_count", 0)) + len(matched)
@@ -110,9 +115,14 @@ class _MetadataParser(HTMLParser):
 
 
 def _publisher_metadata(url: str) -> tuple[str | None, str | None, str | None]:
-    """Inspect only the exact publisher URL; failure is intentionally non-fatal."""
+    """Inspect only the exact publisher URL; failure is intentionally non-fatal.
+
+    Runs only from the background refresh worker (never the request path), so a
+    few extra seconds of publisher latency is an acceptable trade for real
+    headlines and images instead of the GDELT-domain fallback string.
+    """
     try:
-        with httpx.Client(timeout=1.5, follow_redirects=True, headers={"User-Agent": settings.http_user_agent}) as client:
+        with httpx.Client(timeout=4.0, follow_redirects=True, headers={"User-Agent": settings.http_user_agent}) as client:
             response = client.get(url, headers={"Range": "bytes=0-262143"})
             response.raise_for_status()
         parser = _MetadataParser()
@@ -120,6 +130,14 @@ def _publisher_metadata(url: str) -> tuple[str | None, str | None, str | None]:
         return parser.title, parser.image, parser.description
     except Exception:
         return None, None, None
+
+
+def _headline_from_url(url: str, topic: str) -> str:
+    """Readable source title when a publisher blocks metadata extraction."""
+    path = urlparse(url).path.rstrip("/").split("/")[-1]
+    words = re.sub(r"[-_]+", " ", path).strip()
+    words = re.sub(r"\b\d{4}\b", "", words).strip()
+    return words[:1].upper() + words[1:] if words else f"Latest reporting on {topic}"
 
 
 def _publisher_family(domain: str) -> str:
@@ -146,7 +164,7 @@ def _artifact_evidence(row: dict, *, enrich: bool = True, enrich_limit: int = 10
     published_at = str(row["date"])[:10] + "T00:00:00Z"
     result: list[dict] = []
     seen_urls: set[str] = set()
-    selected: list[tuple[dict, str, str]] = []
+    selected: list[tuple[dict, str, str, str]] = []
     for record in records[:10]:
         url = str(record.get("url") or "").strip()
         if not url.startswith(("http://", "https://")) or url in seen_urls:
@@ -155,20 +173,31 @@ def _artifact_evidence(row: dict, *, enrich: bool = True, enrich_limit: int = 10
         supplied = str(record.get("title") or "").strip()
         if supplied.lower().startswith(("source report from ", "gdelt source report from ")):
             supplied = ""
-        selected.append((record, url, supplied))
+        supplied_image = str(record.get("imageUrl") or "").strip()
+        selected.append((record, url, supplied, supplied_image))
     metadata: dict[str, tuple[str | None, str | None, str | None]] = {}
-    targets = [url for _, url, supplied in selected if enrich and not supplied][:enrich_limit]
+    # Only fetch publisher metadata for what we don't already have from GDELT
+    # (title or image); this keeps the enrichment budget for genuinely bare rows.
+    targets = [url for _, url, supplied, supplied_image in selected
+               if enrich and not (supplied and supplied_image)][:enrich_limit]
     if targets:
         with ThreadPoolExecutor(max_workers=min(8, len(targets)), thread_name_prefix="publisher-meta") as pool:
             metadata = dict(zip(targets, pool.map(_publisher_metadata, targets)))
-    for record, url, supplied in selected:
+    # If a publisher exposes only one image, reuse that latest available image
+    # for otherwise image-less records in this same shift. This is explicitly
+    # a source-image fallback, never an AI-generated or invented illustration.
+    latest_image = next((supplied_image for _, _, _, supplied_image in reversed(selected) if supplied_image), None)
+    if not latest_image:
+        latest_image = next((image for _, image, _ in reversed(list(metadata.values())) if image), None)
+    topic = str(row.get("topic") or "World Shift")
+    for record, url, supplied, supplied_image in selected:
         title, image, snippet = metadata.get(url, (None, None, None))
         domain = str(record.get("domain") or urlparse(url).netloc).lower()
         evidence_id = "ev_" + hashlib.sha256(url.encode()).hexdigest()[:16]
         result.append({
             "evidenceId": evidence_id, "type": "news", "source": domain or "GDELT",
-            "sourceDomain": domain, "originalHeadline": supplied or title, "publishedAt": published_at,
-            "url": url, "imageUrl": image, "sourceSnippet": snippet, "aiSummary": None,
+            "sourceDomain": domain, "originalHeadline": supplied or title or _headline_from_url(url, topic), "publishedAt": published_at,
+            "url": url, "imageUrl": supplied_image or image or latest_image, "sourceSnippet": snippet, "aiSummary": None,
             "tags": ["observed", "gdelt", str(row.get("category", "world"))],
             "eventIds": [], "claimIds": [], "entityIds": [], "evidenceClass": "observed",
             "sourceClass": _source_class(domain), "retrievalStatus": "complete" if snippet else "metadata_only",
@@ -330,21 +359,28 @@ def _snapshot_payload(row: dict, rows: list[dict], persona: str, meta: SnapshotM
         independentPublisherCount=item.get("independentPublisherCount", max(1, len(families))),
         corroborationStatus=item.get("corroborationStatus", "independently_corroborated" if len(families) >= 2 else "single_source"),
     ) for item in evidence_data]
-    base.evidence = evidence
-    base.shift.summary = common.summary
-    base.shift.overview = Overview(
-        whatHappened=" ".join(point.text for point in common.whats_happening),
-        whyItMatters=" ".join(point.text for point in common.why_it_matters),
-        quickTake=common.quick_take, characteristics=base.shift.overview.characteristics,
-        themes=common.key_themes, whatsHappening=common.whats_happening,
-        whyItMattersPoints=common.why_it_matters, keyDevelopments=common.key_developments,
-        watchNext=common.watch_next, drivers=common.drivers, contradictions=common.contradictions,
-    )
-    base.content = PersonaContent(impact=Impact(
-        summary=persona_view.summary, directImpacts=persona_view.direct_impacts,
-        impactChain=persona_view.impact_chain, secondOrderEffects=persona_view.second_order_effects, opportunities=persona_view.opportunities,
-        risks=persona_view.risks, watchItems=persona_view.watch_items,
-    ), domain={"groups": persona_view.domain_groups})
+    editorial_evidence = [item for item in base.evidence if "editorial-brief" in item.tags]
+    editorial_ids = {item.id for item in editorial_evidence}
+    base.evidence = editorial_evidence + [item for item in evidence if item.id not in editorial_ids]
+    if base.shift.id != CONFLICT_ID:
+        base.shift.summary = common.summary
+        base.shift.overview = Overview(
+            whatHappened=" ".join(point.text for point in common.whats_happening),
+            whyItMatters=" ".join(point.text for point in common.why_it_matters),
+            quickTake=common.quick_take, characteristics=base.shift.overview.characteristics,
+            themes=common.key_themes, whatsHappening=common.whats_happening,
+            whyItMattersPoints=common.why_it_matters, keyDevelopments=common.key_developments,
+            watchNext=common.watch_next, drivers=common.drivers, contradictions=common.contradictions,
+            contextBrief=common.context_brief, timeline=common.timeline, actors=common.actors,
+            factsAndFigures=common.facts_and_figures,
+        )
+        base.content = PersonaContent(impact=Impact(
+            summary=persona_view.summary, directImpacts=persona_view.direct_impacts,
+            impactChain=persona_view.impact_chain, secondOrderEffects=persona_view.second_order_effects, opportunities=persona_view.opportunities,
+            risks=persona_view.risks, watchItems=persona_view.watch_items,
+            exposureMap=persona_view.exposure_map,
+        ), domain={"groups": persona_view.domain_groups})
+    evidence = base.evidence
     cross_links = _cross_shift_links(base.shift.id, rows, [item.id for item in evidence])
     entity_nodes = [RelationshipNode(id=e.entity_id, label=e.name, type=e.entity_type, category="observed",
             summary=f"Grounded entity: {e.name}", evidenceIds=e.evidence_ids) for e in semantic.entities]
@@ -456,11 +492,13 @@ class RefreshService:
                 for rank, row in enumerate(rows, 1):
                     shift_id = _slug(str(row["topic"]))
                     self._update(run_id, stage="building_evidence", completed=completed)
-                    # Publisher metadata is best-effort enrichment. Do not let an
-                    # arbitrary publisher connection block publication of the v2
-                    # snapshot; the supplied GDELT URL/headline remains valid
-                    # evidence when metadata retrieval is unavailable.
-                    evidence = _artifact_evidence(row, enrich=False)
+                    # Publisher metadata is best-effort enrichment, fetched here
+                    # (background worker only, never the request path) so the
+                    # evidence carries real headlines/images instead of the
+                    # "Reporting related to {topic}" placeholder. A failed
+                    # fetch degrades gracefully to the GDELT-supplied fields;
+                    # it never blocks publication of the v2 snapshot.
+                    evidence = _artifact_evidence(row, enrich=True)
                     if not evidence:
                         raise RuntimeError(f"No bounded evidence for {shift_id}")
                     metrics = {"articleCount": int(row.get("evidence_article_count", 0)),
@@ -481,7 +519,21 @@ class RefreshService:
                                     run_id=run_id, max_results=web_results_per_shift,
                                 )
                                 seen = {item["url"] for item in evidence}
-                                evidence.extend(item for item in researched if item["url"] not in seen)
+                                new_items = [item for item in researched if item["url"] not in seen]
+                                # Web-research citations rarely include an image;
+                                # best-effort og:image lookup, same as GDELT rows.
+                                image_targets = [item["url"] for item in new_items][:8]
+                                if image_targets:
+                                    with ThreadPoolExecutor(
+                                        max_workers=min(8, len(image_targets)),
+                                        thread_name_prefix="research-meta",
+                                    ) as pool:
+                                        images = dict(zip(image_targets, pool.map(_publisher_metadata, image_targets)))
+                                    for item in new_items:
+                                        _, image, _ = images.get(item["url"], (None, None, None))
+                                        if image:
+                                            item["imageUrl"] = image
+                                evidence.extend(new_items)
                                 session.commit()
                             except Exception:
                                 logger.exception("bounded web research failed for %s; continuing with GDELT evidence", shift_id)

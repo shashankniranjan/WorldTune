@@ -43,16 +43,19 @@ class Settings(BaseSettings):
     )
     llm_base_url: str = "https://openrouter.ai/api/v1"
     llm_model: str = "google/gemini-2.5-flash"
-    world_shift_prompt_version: str = "world-shift-v2"
-    world_shift_schema_version: str = "2.0"
+    world_shift_prompt_version: str = "world-shift-v4-full-briefings"
+    world_shift_schema_version: str = "2.1"
     world_shift_refresh_max_shifts: int = 20
     world_shift_ai_enabled: bool = True
     world_shift_auto_refresh_enabled: bool = True
     # Background refresh cadence; reads continue serving the last ACTIVE snapshot.
-    world_shift_refresh_interval_seconds: int = 300
+    world_shift_refresh_interval_seconds: int = 86400
     world_shift_refresh_startup_delay_seconds: int = 5
     world_shift_web_research_enabled: bool = True
-    world_shift_web_results_per_shift: int = 3
+    # Raised from 3: GDELT GKG metadata alone rarely carries enough prose for
+    # the grounding filters to pass anything. More researched sources per
+    # shift gives the semantic-extraction stage real specifics to ground on.
+    world_shift_web_results_per_shift: int = 8
     world_shift_web_research_ttl_seconds: int = 21600
 
     # --- HTTP client behaviour (outbound, provider adapters) ----------------
