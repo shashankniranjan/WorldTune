@@ -760,21 +760,10 @@ def get_contract_shift(shift_id: str, persona: str, snapshot_id: str | None = No
                 raise WorldShiftSnapshotMismatch(
                     f"Requested snapshot {snapshot_id!r} is not the current immutable snapshot"
                 )
-            snapshot = WorldShiftSnapshot.model_validate(active.payload)
-            if editorial_bundle(shift_id):
-                current_rows = _latest_rows(rows)
-                current_row = next((item for item in current_rows if _slug(str(item["topic"])) == shift_id), None)
-                if current_row is not None:
-                    editorial = _compose(current_row, current_rows, persona, SnapshotMeta(
-                        snapshotId=snapshot.snapshot_id, generatedAt=snapshot.generated_at,
-                        validUntil=snapshot.valid_until,
-                    ))
-                    snapshot.shift.summary = editorial.shift.summary
-                    snapshot.shift.overview = editorial.shift.overview
-                    snapshot.content = editorial.content
-                    editorial_ids = {item.id for item in editorial.evidence}
-                    snapshot.evidence = editorial.evidence + [item for item in snapshot.evidence if item.id not in editorial_ids]
-            return snapshot
+            # The ACTIVE row is the immutable publication. Re-composing editorial
+            # content from current source rows here made the same snapshot return
+            # different/stale narrative on every request and hid AI refresh output.
+            return WorldShiftSnapshot.model_validate(active.payload)
     meta = _snapshot_meta(rows)
     _check_snapshot(meta, snapshot_id)
     latest = _latest_rows(rows)

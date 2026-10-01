@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -28,53 +29,84 @@ from app.schemas.world_shift import (
 )
 from app.services.world_shift_ai import WorldShiftGenerationService, WorldShiftWebResearchService
 from app.services.world_shift_contract import _compose, _latest_rows, _rows, _slug, _snapshot_meta
-from app.services.world_shift_editorial import CONFLICT_ID
 from app.services.world_shift_runtime import get_runtime_values
 from app.providers.news.gdelt import GDELTNewsProvider
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="worldtune-refresh")
 _launch_lock = threading.Lock()
+_STALE_RUN_AFTER = timedelta(minutes=15)
+
+
+def reset_refresh_executor() -> None:
+    """Create a live worker pool for this application lifespan."""
+    global _executor
+    with _launch_lock:
+        if getattr(_executor, "_shutdown", False):
+            _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="worldtune-refresh")
+
+
+def fail_orphaned_refresh_runs() -> int:
+    """Mark persisted in-flight runs failed after process startup; workers are in-memory."""
+    now = datetime.now(timezone.utc)
+    with session_scope() as session:
+        runs = session.scalars(select(WorldShiftRefreshRunORM).where(
+            WorldShiftRefreshRunORM.status.in_(["queued", "running"])
+        )).all()
+        for run in runs:
+            run.status = "failed"
+            run.stage = "failed"
+            run.error = "Refresh worker was lost when the backend process restarted"
+            run.updated_at = now
+            logger.warning(
+                "orphaned world-shift refresh marked failed at startup: run_id=%s previous_stage=%s progress=%s/%s",
+                run.run_id, run.stage, run.completed, run.total,
+            )
+        return len(runs)
 
 
 def _live_gdelt_rows(base_rows: tuple[dict, ...]) -> tuple[dict, ...]:
-    """Overlay recent GDELT articles in the background refresh worker only."""
-    try:
-        # GDELT rejects windows shorter than roughly 15 minutes; use a
-        # 30-minute overlap so a five-minute scheduler never misses articles.
-        since = datetime.now(timezone.utc) - timedelta(minutes=30)
-        events = GDELTNewsProvider().fetch_news(since=since, limit=250)
-    except Exception:
-        logger.exception("live GDELT overlay failed; using cached artifact")
-        return base_rows
-    if not events:
-        return base_rows
-    now_date = max(event.published_at for event in events).date().isoformat()
+    """Add recent, shift-matched GDELT articles without relabeling old evidence."""
+    since = datetime.now(timezone.utc) - timedelta(minutes=30)
+    provider = GDELTNewsProvider()
     updated: list[dict] = []
     for original in base_rows:
         row = dict(original)
-        # Keep the full topic set in the same refresh window; only matched
-        # topics receive new evidence below.
-        row["date"] = now_date
-        topic = str(row.get("topic", "")).lower()
-        tokens = [token for token in topic.replace("-", " ").split() if len(token) >= 4]
-        matched = [event for event in events if any(token in event.title.lower() for token in tokens)]
+        topic = str(row.get("topic", ""))
+        tokens = [token for token in re.findall(r"[a-z0-9]+", topic.lower())
+                  if len(token) >= 4 and token not in {"with", "from", "that", "this", "into", "and"}]
+        if not tokens:
+            updated.append(row)
+            continue
+        query = "(" + " OR ".join(f'"{token}"' for token in tokens[:6]) + ") sourcelang:english"
+        try:
+            events = provider.fetch_news(query=query, since=since, limit=25)
+        except Exception:
+            logger.exception("live GDELT topic query failed; retaining cached evidence: topic=%s", topic)
+            events = []
+        matched = [event for event in events
+                   if any(token in event.title.lower() for token in tokens)]
         if matched:
             records = json.loads(row.get("representative_evidence") or "[]")
             seen = {str(item.get("url")) for item in records}
+            added = 0
             for event in matched:
                 if event.url and event.url not in seen:
                     records.append({
                         "title": event.title, "url": event.url, "domain": event.domain,
-                        "imageUrl": event.image_url,
+                        "imageUrl": event.image_url, "publishedAt": event.published_at.isoformat(),
                     })
                     seen.add(event.url)
+                    added += 1
             row["representative_evidence"] = json.dumps(records[-10:])
-            row["evidence_article_count"] = int(row.get("evidence_article_count", 0)) + len(matched)
+            row["evidence_article_count"] = int(row.get("evidence_article_count", 0)) + added
             row["evidence_unique_domains"] = max(
                 int(row.get("evidence_unique_domains", 0)),
                 len({event.domain for event in matched if event.domain}),
             )
+            logger.info("live GDELT topic overlay: topic=%s fetched=%s matched=%s added=%s",
+                        topic, len(events), len(matched), added)
         updated.append(row)
     return tuple(updated)
 
@@ -196,7 +228,8 @@ def _artifact_evidence(row: dict, *, enrich: bool = True, enrich_limit: int = 10
         evidence_id = "ev_" + hashlib.sha256(url.encode()).hexdigest()[:16]
         result.append({
             "evidenceId": evidence_id, "type": "news", "source": domain or "GDELT",
-            "sourceDomain": domain, "originalHeadline": supplied or title or _headline_from_url(url, topic), "publishedAt": published_at,
+            "sourceDomain": domain, "originalHeadline": supplied or title or _headline_from_url(url, topic),
+            "publishedAt": record.get("publishedAt") or published_at,
             "url": url, "imageUrl": supplied_image or image or latest_image, "sourceSnippet": snippet, "aiSummary": None,
             "tags": ["observed", "gdelt", str(row.get("category", "world"))],
             "eventIds": [], "claimIds": [], "entityIds": [], "evidenceClass": "observed",
@@ -332,20 +365,12 @@ def _fallback_scenarios(shift_id: str, topic: str, evidence_ids: list[str]) -> l
     ) for label, title, horizon, summary in templates]
 
 
-def _snapshot_payload(row: dict, rows: list[dict], persona: str, meta: SnapshotMeta, evidence_data: list[dict], semantic, common, persona_view) -> WorldShiftSnapshot:
-    base = _compose(row, rows, persona, meta)
-    evidence_links = {item["evidenceId"]: {"events": [], "claims": [], "entities": []} for item in evidence_data}
-    for event in semantic.events:
-        for evidence_id in event.evidence_ids:
-            evidence_links[evidence_id]["events"].append(event.event_id)
-    for claim in semantic.claims:
-        for evidence_id in claim.evidence_ids:
-            evidence_links[evidence_id]["claims"].append(claim.claim_id)
-    for entity in semantic.entities:
-        for evidence_id in entity.evidence_ids:
-            evidence_links[evidence_id]["entities"].append(entity.entity_id)
+def _evidence_models(evidence_data: list[dict], evidence_links: dict | None = None) -> list[Evidence]:
+    evidence_links = evidence_links or {}
+    for item in evidence_data:
+        evidence_links.setdefault(item["evidenceId"], {"events": [], "claims": [], "entities": []})
     families = {_publisher_family(str(item.get("sourceDomain") or item.get("source") or "")) for item in evidence_data}
-    evidence = [Evidence(
+    return [Evidence(
         id=item["evidenceId"], type=item["type"], source=item["source"],
         title=item["originalHeadline"] or "Headline unavailable", summary=item["aiSummary"] or item["sourceSnippet"],
         publishedAt=item["publishedAt"], url=item["url"], imageUrl=item["imageUrl"],
@@ -359,27 +384,53 @@ def _snapshot_payload(row: dict, rows: list[dict], persona: str, meta: SnapshotM
         independentPublisherCount=item.get("independentPublisherCount", max(1, len(families))),
         corroborationStatus=item.get("corroborationStatus", "independently_corroborated" if len(families) >= 2 else "single_source"),
     ) for item in evidence_data]
+
+
+def _merge_fallback_evidence(existing: list[Evidence], evidence_data: list[dict]) -> list[Evidence]:
+    """Keep editorial context and the exact source set collected for this run."""
+    editorial = [item for item in existing if "editorial-brief" in item.tags]
+    editorial_ids = {item.id for item in editorial}
+    return editorial + [item for item in _evidence_models(evidence_data) if item.id not in editorial_ids]
+
+
+def _apply_common_synthesis(base: WorldShiftSnapshot, common) -> None:
+    """Apply the shared, evidence-grounded narrative independently of persona output."""
+    base.shift.summary = common.summary
+    base.shift.overview = Overview(
+        whatHappened=" ".join(point.text for point in common.whats_happening),
+        whyItMatters=" ".join(point.text for point in common.why_it_matters),
+        quickTake=common.quick_take, characteristics=base.shift.overview.characteristics,
+        themes=common.key_themes, whatsHappening=common.whats_happening,
+        whyItMattersPoints=common.why_it_matters, keyDevelopments=common.key_developments,
+        watchNext=common.watch_next, drivers=common.drivers, contradictions=common.contradictions,
+        contextBrief=common.context_brief, timeline=common.timeline, actors=common.actors,
+        factsAndFigures=common.facts_and_figures,
+    )
+
+
+def _snapshot_payload(row: dict, rows: list[dict], persona: str, meta: SnapshotMeta, evidence_data: list[dict], semantic, common, persona_view) -> WorldShiftSnapshot:
+    base = _compose(row, rows, persona, meta)
+    evidence_links = {item["evidenceId"]: {"events": [], "claims": [], "entities": []} for item in evidence_data}
+    for event in semantic.events:
+        for evidence_id in event.evidence_ids:
+            evidence_links[evidence_id]["events"].append(event.event_id)
+    for claim in semantic.claims:
+        for evidence_id in claim.evidence_ids:
+            evidence_links[evidence_id]["claims"].append(claim.claim_id)
+    for entity in semantic.entities:
+        for evidence_id in entity.evidence_ids:
+            evidence_links[evidence_id]["entities"].append(entity.entity_id)
+    evidence = _evidence_models(evidence_data, evidence_links)
     editorial_evidence = [item for item in base.evidence if "editorial-brief" in item.tags]
     editorial_ids = {item.id for item in editorial_evidence}
     base.evidence = editorial_evidence + [item for item in evidence if item.id not in editorial_ids]
-    if base.shift.id != CONFLICT_ID:
-        base.shift.summary = common.summary
-        base.shift.overview = Overview(
-            whatHappened=" ".join(point.text for point in common.whats_happening),
-            whyItMatters=" ".join(point.text for point in common.why_it_matters),
-            quickTake=common.quick_take, characteristics=base.shift.overview.characteristics,
-            themes=common.key_themes, whatsHappening=common.whats_happening,
-            whyItMattersPoints=common.why_it_matters, keyDevelopments=common.key_developments,
-            watchNext=common.watch_next, drivers=common.drivers, contradictions=common.contradictions,
-            contextBrief=common.context_brief, timeline=common.timeline, actors=common.actors,
-            factsAndFigures=common.facts_and_figures,
-        )
-        base.content = PersonaContent(impact=Impact(
-            summary=persona_view.summary, directImpacts=persona_view.direct_impacts,
-            impactChain=persona_view.impact_chain, secondOrderEffects=persona_view.second_order_effects, opportunities=persona_view.opportunities,
-            risks=persona_view.risks, watchItems=persona_view.watch_items,
-            exposureMap=persona_view.exposure_map,
-        ), domain={"groups": persona_view.domain_groups})
+    _apply_common_synthesis(base, common)
+    base.content = PersonaContent(impact=Impact(
+        summary=persona_view.summary, directImpacts=persona_view.direct_impacts,
+        impactChain=persona_view.impact_chain, secondOrderEffects=persona_view.second_order_effects, opportunities=persona_view.opportunities,
+        risks=persona_view.risks, watchItems=persona_view.watch_items,
+        exposureMap=persona_view.exposure_map,
+    ), domain={"groups": persona_view.domain_groups})
     evidence = base.evidence
     cross_links = _cross_shift_links(base.shift.id, rows, [item.id for item in evidence])
     entity_nodes = [RelationshipNode(id=e.entity_id, label=e.name, type=e.entity_type, category="observed",
@@ -423,7 +474,17 @@ class RefreshService:
                 WorldShiftRefreshRunORM.status.in_(["queued", "running"])
             ).order_by(WorldShiftRefreshRunORM.created_at.desc())).first()
             if active:
-                return active
+                heartbeat = active.updated_at or active.created_at
+                age = datetime.now(timezone.utc) - heartbeat.replace(tzinfo=timezone.utc)
+                if age <= _STALE_RUN_AFTER:
+                    return active
+                active.status = "failed"
+                active.error = f"Refresh recovered as stale after {int(age.total_seconds())} seconds without progress"
+                active.updated_at = datetime.now(timezone.utc)
+                logger.warning(
+                    "stale world-shift refresh marked failed: run_id=%s age_seconds=%s stage=%s progress=%s/%s",
+                    active.run_id, int(age.total_seconds()), active.stage, active.completed, active.total,
+                )
             run_id = "run_" + uuid.uuid4().hex
             current = session.scalars(select(WorldShiftSnapshotORM.snapshot_id).where(
                 WorldShiftSnapshotORM.lifecycle == "ACTIVE"
@@ -438,7 +499,13 @@ class RefreshService:
             session.add(run)
             session.flush()
             session.expunge(run)
-        _executor.submit(self._run, run_id)
+        try:
+            reset_refresh_executor()
+            _executor.submit(self._run, run_id)
+        except Exception as exc:
+            logger.exception("could not submit World Shift refresh worker: run_id=%s", run_id)
+            self._update(run_id, stage="failed", status="failed", error=f"Worker submission failed: {exc}"[:1000])
+            raise
         return run
 
     def get(self, run_id: str) -> WorldShiftRefreshRunORM:
@@ -465,12 +532,13 @@ class RefreshService:
     def _run(self, run_id: str) -> None:
         snapshot_id = "snap_" + uuid.uuid4().hex[:20]
         try:
-            # Network ingestion happens in the worker; API reads remain cache-first.
-            # Refresh from the bounded local artifact. Live GDELT overlay is
-            # intentionally kept out of the publication critical path because
-            # provider throttling/timeouts must not prevent a v2 snapshot.
+            # Keep API reads cache-first; live ingestion is bounded to the worker
+            # and can be disabled with WORLD_SHIFT_LIVE_GDELT_REFRESH_ENABLED.
             rows_tuple = _rows()
-            rows = sorted(_latest_rows(rows_tuple),
+            latest_rows = _latest_rows(rows_tuple)
+            if settings.world_shift_live_gdelt_refresh_enabled:
+                latest_rows = list(_live_gdelt_rows(tuple(latest_rows)))
+            rows = sorted(latest_rows,
                           key=lambda x: float(x.get("priority_score", x.get("signal_strength", 0))),
                           reverse=True)
             rows = rows[:settings.world_shift_refresh_max_shifts]
@@ -509,9 +577,12 @@ class RefreshService:
                                "impactGravity": float(row.get("impact_gravity_score", 0)),
                                "priorityScore": float(row.get("priority_score", row.get("signal_strength", 0))),
                                "direction": str(row.get("direction", "uncertain"))}
+                    common = None
                     try:
                         if web_research_enabled:
                             self._update(run_id, stage="researching_web", completed=completed)
+                            research_started = time.monotonic()
+                            logger.info("refresh web stage started: run_id=%s shift_id=%s rank=%s progress=%s/%s", run_id, shift_id, rank, completed, total)
                             try:
                                 researched = researcher.research(
                                     session, shift_id=shift_id, topic=str(row["topic"]),
@@ -524,6 +595,7 @@ class RefreshService:
                                 # best-effort og:image lookup, same as GDELT rows.
                                 image_targets = [item["url"] for item in new_items][:8]
                                 if image_targets:
+                                    logger.info("refresh research metadata started: run_id=%s shift_id=%s urls=%s", run_id, shift_id, len(image_targets))
                                     with ThreadPoolExecutor(
                                         max_workers=min(8, len(image_targets)),
                                         thread_name_prefix="research-meta",
@@ -533,26 +605,51 @@ class RefreshService:
                                         _, image, _ = images.get(item["url"], (None, None, None))
                                         if image:
                                             item["imageUrl"] = image
+                                    logger.info("refresh research metadata completed: run_id=%s shift_id=%s urls=%s", run_id, shift_id, len(image_targets))
                                 evidence.extend(new_items)
+                                logger.info("refresh research database commit started: run_id=%s shift_id=%s new_items=%s", run_id, shift_id, len(new_items))
                                 session.commit()
-                            except Exception:
-                                logger.exception("bounded web research failed for %s; continuing with GDELT evidence", shift_id)
+                                logger.info("refresh research database commit completed: run_id=%s shift_id=%s elapsed_seconds=%.2f", run_id, shift_id, time.monotonic() - research_started)
+                            except Exception as exc:
+                                logger.exception("bounded web research failed; continuing with GDELT evidence: run_id=%s shift_id=%s error_type=%s elapsed_seconds=%.2f", run_id, shift_id, type(exc).__name__, time.monotonic() - research_started)
                                 session.rollback()
                             completed += 1
+                            logger.info("refresh web stage finished: run_id=%s shift_id=%s progress=%s/%s elapsed_seconds=%.2f", run_id, shift_id, completed, total, time.monotonic() - research_started)
+                        semantic_progress = completed
+                        self._update(run_id, stage="extracting_semantics", completed=semantic_progress)
+                        logger.info("refresh stage handoff: run_id=%s shift_id=%s from=web_research to=semantic_extraction evidence_count=%s", run_id, shift_id, len(evidence))
                         semantic = generator.extract(session, shift_id=shift_id, evidence=evidence, metrics=metrics, run_id=run_id)
                         semantic = _namespace_semantics(shift_id, semantic)
                         session.commit()  # release SQLite writer lock before status update
-                        completed += 1; self._update(run_id, stage="extracting_semantics", completed=completed)
+                        completed += 1; self._update(run_id, stage="generating_overview", completed=completed)
+                        logger.info("refresh stage handoff: run_id=%s shift_id=%s from=semantic_extraction to=world_shift_synthesis semantic_counts=%s", run_id, shift_id, {"events": len(semantic.events), "claims": len(semantic.claims), "entities": len(semantic.entities), "relationships": len(semantic.relationships)})
                         common = generator.synthesize(session, shift_id=shift_id, evidence=evidence, semantic=semantic, metrics=metrics, run_id=run_id)
                         _persist_semantics(session, shift_id, run_id, evidence, semantic)
                         session.commit()
-                        completed += 1; self._update(run_id, stage="generating_overview", completed=completed)
+                        completed += 1
                         for persona in ("finance", "tech"):
                             self._update(run_id, stage=f"generating_{persona}", completed=completed)
-                            view = generator.persona(session, shift_id=shift_id, persona=persona, evidence=evidence,
-                                                     semantic=semantic, common=common, run_id=run_id)
-                            session.commit()
-                            snapshot = _snapshot_payload(row, rows, persona, meta, evidence, semantic, common, view)
+                            logger.info("refresh stage handoff: run_id=%s shift_id=%s from=world_shift_synthesis to=persona_%s evidence_count=%s semantic_entities=%s semantic_claims=%s", run_id, shift_id, persona, len(evidence), len(semantic.entities), len(semantic.claims))
+                            try:
+                                view = generator.persona(session, shift_id=shift_id, persona=persona, evidence=evidence,
+                                                         semantic=semantic, common=common, run_id=run_id)
+                                session.commit()
+                                snapshot = _snapshot_payload(row, rows, persona, meta, evidence, semantic, common, view)
+                            except Exception:
+                                # Finance and Tech are independent products. A bad response for
+                                # one must not erase the already-generated common overview or
+                                # prevent the other persona from being processed.
+                                logger.exception(
+                                    "persona AI generation failed; retaining common synthesis and using persona fallback: run_id=%s shift_id=%s persona=%s",
+                                    run_id, shift_id, persona,
+                                )
+                                session.rollback()
+                                snapshot = _compose(row, rows, persona, meta)
+                                if settings.world_shift_fallback_preserve_current_evidence:
+                                    snapshot.evidence = _merge_fallback_evidence(snapshot.evidence, evidence)
+                                _apply_common_synthesis(snapshot, common)
+                                snapshot.what_happens_next.scenarios = common.scenarios or snapshot.what_happens_next.scenarios
+                                snapshot.relationships.story = common.relationship_story
                             built.append(WorldShiftSnapshotORM(snapshot_id=snapshot_id, shift_id=shift_id,
                                 persona=persona, lifecycle="BUILDING", rank=rank,
                                 payload=snapshot.model_dump(by_alias=True), generation_run_id=run_id,
@@ -564,11 +661,23 @@ class RefreshService:
                         # deterministic GDELT evidence and continue with the rest.
                         logger.exception("AI generation failed for %s; publishing deterministic fallback", shift_id)
                         session.rollback()
-                        fallback = _compose(row, rows, "tech", meta)
+                        fallback_sources = _evidence_models(evidence)
+                        logger.warning(
+                            "AI fallback source evidence: run_id=%s shift_id=%s retained=%s evidence_count=%s web_research_count=%s",
+                            run_id, shift_id, settings.world_shift_fallback_preserve_current_evidence,
+                            len(fallback_sources),
+                            sum("web-research" in item.get("tags", []) for item in evidence),
+                        )
                         for persona in ("finance", "tech"):
                             if any(item.shift_id == shift_id and item.persona == persona for item in built):
                                 continue
-                            fallback.persona = persona
+                            fallback = _compose(row, rows, persona, meta)
+                            if settings.world_shift_fallback_preserve_current_evidence:
+                                fallback.evidence = _merge_fallback_evidence(fallback.evidence, evidence)
+                            if common is not None:
+                                _apply_common_synthesis(fallback, common)
+                                fallback.what_happens_next.scenarios = common.scenarios or fallback.what_happens_next.scenarios
+                                fallback.relationships.story = common.relationship_story
                             built.append(WorldShiftSnapshotORM(snapshot_id=snapshot_id, shift_id=shift_id,
                                 persona=persona, lifecycle="BUILDING", rank=rank,
                                 payload=fallback.model_dump(by_alias=True), generation_run_id=run_id,

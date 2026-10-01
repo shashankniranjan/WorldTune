@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 
 from app.db import session_scope
 from app.models import AIGenerationORM, WorldShiftRefreshRunORM, WorldShiftSnapshotORM
+from app.schemas.canonical import CanonicalNewsEvent
 from app.schemas.world_shift import PersonaSynthesis, SemanticExtraction, WorldShiftSynthesis
 from app.services import world_shift_refresh as refresh_module
 from app.services.world_shift_ai import (
@@ -224,6 +225,53 @@ def test_headline_preserved_and_image_nullable():
     evidence = refresh_module._artifact_evidence(row, enrich=False)
     assert evidence[0]["originalHeadline"] == "Original publisher headline"
     assert evidence[0]["imageUrl"] is None
+
+
+def test_fallback_snapshot_keeps_web_research_evidence():
+    base_source = {**EVIDENCE[0], "type": "news"}
+    web_source = {**base_source, "evidenceId": "web_recent", "type": "web_research",
+                  "source": "reuters.com", "sourceDomain": "reuters.com",
+                  "originalHeadline": "A recent cited development", "publishedAt": "2026-09-22T19:00:00Z",
+                  "tags": ["observed", "web-research"], "retrievalStatus": "metadata_only"}
+    merged = refresh_module._merge_fallback_evidence([], [base_source, web_source])
+
+    assert [item.id for item in merged] == ["ev_alpha", "web_recent"]
+    assert merged[1].title == "A recent cited development"
+    assert merged[1].published_at == "2026-09-22T19:00:00Z"
+    assert "web-research" in merged[1].tags
+
+
+def test_live_gdelt_overlay_adds_topic_news_and_preserves_real_dates(monkeypatch):
+    published = datetime(2026, 9, 23, 0, 30, tzinfo=timezone.utc)
+    event = CanonicalNewsEvent(
+        title="Armed conflict escalates after new regional attacks",
+        url="https://news.example/armed-conflict", published_at=published, domain="news.example",
+    )
+    queries: list[str] = []
+
+    class FakeGDELTProvider:
+        def fetch_news(self, *, query, since, limit):
+            queries.append(query)
+            assert since.tzinfo is not None and limit == 25
+            return [event] if "armed" in query else []
+
+    monkeypatch.setattr(refresh_module, "GDELTNewsProvider", FakeGDELTProvider)
+    rows = (
+        {"topic": "Armed Conflict and Military Escalation", "date": "2026-09-19",
+         "representative_evidence": '[{"title":"Old report","url":"https://old.example/a","domain":"old.example"}]'},
+        {"topic": "Semiconductors", "date": "2026-09-19", "representative_evidence": "[]"},
+    )
+
+    updated = refresh_module._live_gdelt_rows(rows)
+    first_evidence = refresh_module._artifact_evidence(updated[0], enrich=False)
+
+    assert len(queries) == 2
+    assert updated[0]["date"] == "2026-09-19"  # old artifact date is not promoted
+    assert [item["publishedAt"] for item in first_evidence] == [
+        "2026-09-19T00:00:00Z", published.isoformat()
+    ]
+    assert updated[0]["evidence_article_count"] == 1
+    assert updated[1]["representative_evidence"] == "[]"
 
 
 def test_evidence_quality_metadata_and_independent_publishers(monkeypatch):

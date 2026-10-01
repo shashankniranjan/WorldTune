@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -16,6 +18,9 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import AIGenerationORM
 from app.schemas.world_shift import ExposureItem, PersonaSynthesis, SemanticExtraction, WorldShiftSynthesis
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 T = TypeVar("T", bound=BaseModel)
 ALLOWED_CLASSES = {"observed", "calculated", "inferred", "associated", "reasoned"}
@@ -328,7 +333,7 @@ def validate_grounding(
 
 
 class OpenRouterStructuredClient:
-    def generate(self, *, stage: str, schema: type[T], payload: dict) -> T:
+    def generate(self, *, stage: str, schema: type[T], payload: dict, run_id: str = "unknown") -> T:
         if not settings.llm_api_key:
             raise RuntimeError("OPENROUTER_API_KEY is required for World Shift AI refresh")
         schema_json = schema.model_json_schema(by_alias=True)
@@ -351,18 +356,71 @@ class OpenRouterStructuredClient:
             ],
         }
         headers = {"Authorization": f"Bearer {settings.llm_api_key}", "Content-Type": "application/json"}
-        with httpx.Client(timeout=max(30.0, settings.http_timeout_seconds)) as client:
-            response = client.post(f"{settings.llm_base_url.rstrip('/')}/chat/completions", json=request, headers=headers)
-            if response.status_code in {400, 404, 422}:
-                # Some OpenRouter model/provider routes expose JSON mode but not
-                # native JSON-schema mode. Pydantic remains the authority.
-                request["response_format"] = {"type": "json_object"}
+        started = time.monotonic()
+        logger.info(
+            "AI stage request started: run_id=%s stage=%s model=%s input_bytes=%s",
+            run_id, stage, settings.llm_model,
+            len(json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")),
+        )
+        try:
+            with httpx.Client(timeout=max(30.0, settings.http_timeout_seconds)) as client:
                 response = client.post(f"{settings.llm_base_url.rstrip('/')}/chat/completions", json=request, headers=headers)
-            response.raise_for_status()
-        content = response.json()["choices"][0]["message"]["content"]
+                if response.status_code in {400, 404, 422}:
+                    logger.warning(
+                        "AI stage schema-mode request rejected; retrying JSON mode: run_id=%s stage=%s status=%s",
+                        run_id, stage, response.status_code,
+                    )
+                    # Some OpenRouter model/provider routes expose JSON mode but not
+                    # native JSON-schema mode. Pydantic remains the authority.
+                    request["response_format"] = {"type": "json_object"}
+                    response = client.post(f"{settings.llm_base_url.rstrip('/')}/chat/completions", json=request, headers=headers)
+                logger.info(
+                    "AI stage HTTP response received: run_id=%s stage=%s status=%s elapsed_seconds=%.2f",
+                    run_id, stage, response.status_code, time.monotonic() - started,
+                )
+                response.raise_for_status()
+        except Exception as exc:
+            logger.exception(
+                "AI stage HTTP request failed: run_id=%s stage=%s error_type=%s elapsed_seconds=%.2f",
+                run_id, stage, type(exc).__name__, time.monotonic() - started,
+            )
+            raise
+        body = response.json()
+        choice = body["choices"][0]
+        content = choice["message"]["content"]
         if isinstance(content, list):
             content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-        return schema.model_validate_json(content)
+        content = str(content)
+        preview_limit = 16000
+        logger.info(
+            "AI stage returned content: run_id=%s stage=%s finish_reason=%s response_chars=%s response_truncated=%s usage=%s content_preview=%s",
+            run_id, stage, choice.get("finish_reason"), len(content), len(content) > preview_limit,
+            body.get("usage"), content[:preview_limit],
+        )
+        result = schema.model_validate_json(content)
+        logger.info("AI stage JSON schema parsed: run_id=%s stage=%s", run_id, stage)
+        return result
+
+
+def _semantic_counts(semantic: SemanticExtraction | None) -> dict[str, int]:
+    if semantic is None:
+        return {}
+    return {
+        "events": len(semantic.events), "claims": len(semantic.claims),
+        "entities": len(semantic.entities), "relationships": len(semantic.relationships),
+    }
+
+
+def _stage_output_summary(result: BaseModel) -> dict:
+    """Compact readable result summary for stage handoffs; raw model JSON is logged at the HTTP boundary."""
+    data = result.model_dump(by_alias=True)
+    arrays = {key: len(value) for key, value in data.items() if isinstance(value, list)}
+    highlights = {}
+    for key in ("summary", "quickTake"):
+        value = data.get(key)
+        if isinstance(value, str) and value:
+            highlights[key] = value[:500]
+    return {"array_counts": arrays, "highlights": highlights}
 
 
 class WorldShiftGenerationService:
@@ -387,20 +445,30 @@ class WorldShiftGenerationService:
             result = schema.model_validate(cached.output)
             validate_grounding(result, evidence, semantic=semantic, grounding_input=payload)
             self.reused += 1
+            logger.info(
+                "AI stage cache hit: run_id=%s shift_id=%s stage=%s persona=%s output_summary=%s",
+                run_id, shift_id, stage, persona, _stage_output_summary(result),
+            )
             return result
+        logger.info(
+            "AI stage handoff: run_id=%s shift_id=%s stage=%s persona=%s evidence_count=%s semantic_counts=%s input_digest=%s",
+            run_id, shift_id, stage, persona, len(evidence), _semantic_counts(semantic), input_digest[:16],
+        )
         generation_payload = payload
         result: T | None = None
         last_error: IntelligenceValidationError | None = None
         for attempt in range(3):
             self.attempted += 1
             try:
-                result = self.client.generate(stage=stage, schema=schema, payload=generation_payload)
+                logger.info("AI stage attempt started: run_id=%s shift_id=%s stage=%s persona=%s attempt=%s/3", run_id, shift_id, stage, persona, attempt + 1)
+                result = self.client.generate(stage=stage, schema=schema, payload=generation_payload, run_id=run_id)
             except RuntimeError as exc:
                 # Missing credentials/configuration cannot be repaired by
                 # retrying; the refresh service will publish its fallback.
                 if "OPENROUTER_API_KEY" in str(exc):
                     raise
                 last_error = IntelligenceValidationError(str(exc))
+                logger.warning("AI stage attempt failed: run_id=%s shift_id=%s stage=%s attempt=%s/3 error_type=%s error=%s", run_id, shift_id, stage, attempt + 1, type(exc).__name__, str(exc)[:500])
                 generation_payload = {
                     **payload,
                     "validationFeedback": f"Attempt {attempt + 1} failed before producing valid JSON: {exc}. Return strict JSON only.",
@@ -413,6 +481,10 @@ class WorldShiftGenerationService:
                 last_error = IntelligenceValidationError(
                     f"AI response was invalid on attempt {attempt + 1}: {exc}"
                 )
+                logger.warning(
+                    "AI stage attempt failed before validation: run_id=%s shift_id=%s stage=%s persona=%s attempt=%s/3 error_type=%s error=%s",
+                    run_id, shift_id, stage, persona, attempt + 1, type(exc).__name__, str(exc)[:500],
+                )
                 generation_payload = {
                     **payload,
                     "validationFeedback": (
@@ -423,12 +495,18 @@ class WorldShiftGenerationService:
                 continue
             result, removed = filter_invalid_objects(result, evidence, semantic)
             self.validation_failures += removed
+            logger.info(
+                "AI stage grounding filter completed: run_id=%s shift_id=%s stage=%s persona=%s attempt=%s removed_objects=%s output_summary=%s",
+                run_id, shift_id, stage, persona, attempt + 1, removed, _stage_output_summary(result),
+            )
             try:
                 validate_grounding(result, evidence, semantic=semantic, grounding_input=payload)
                 last_error = None
+                logger.info("AI stage validation accepted: run_id=%s shift_id=%s stage=%s persona=%s attempt=%s", run_id, shift_id, stage, persona, attempt + 1)
                 break
             except IntelligenceValidationError as exc:
                 last_error = exc
+                logger.warning("AI stage validation rejected: run_id=%s shift_id=%s stage=%s persona=%s attempt=%s error=%s", run_id, shift_id, stage, persona, attempt + 1, str(exc)[:800])
                 generation_payload = {
                     **payload,
                     "validationFeedback": (
@@ -445,6 +523,7 @@ class WorldShiftGenerationService:
             generation_run_id=run_id, output=result.model_dump(by_alias=True),
         ))
         session.flush()
+        logger.info("AI stage output cached: run_id=%s shift_id=%s stage=%s persona=%s output_summary=%s", run_id, shift_id, stage, persona, _stage_output_summary(result))
         return result
 
     def extract(self, session: Session, *, shift_id: str, evidence: list[dict], metrics: dict, run_id: str) -> SemanticExtraction:
@@ -509,9 +588,25 @@ class WorldShiftWebResearchService:
             }}],
         }
         headers = {"Authorization": f"Bearer {settings.llm_api_key}", "Content-Type": "application/json"}
-        with httpx.Client(timeout=max(45.0, settings.http_timeout_seconds)) as client:
-            response = client.post(f"{settings.llm_base_url.rstrip('/')}/chat/completions", json=request, headers=headers)
-            response.raise_for_status()
+        timeout_seconds = max(45.0, settings.http_timeout_seconds)
+        started = time.monotonic()
+        logger.info("web research request started: run_id=%s shift_id=%s attempt=1 timeout_seconds=%s", run_id, shift_id, timeout_seconds)
+        response = None
+        for attempt in range(1, 3):
+            attempt_started = time.monotonic()
+            try:
+                with httpx.Client(timeout=timeout_seconds) as client:
+                    response = client.post(f"{settings.llm_base_url.rstrip('/')}/chat/completions", json=request, headers=headers)
+                logger.info("web research response received: run_id=%s shift_id=%s attempt=%s status=%s elapsed_seconds=%.2f", run_id, shift_id, attempt, getattr(response, "status_code", "unknown"), time.monotonic() - attempt_started)
+                response.raise_for_status()
+                break
+            except (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError) as exc:
+                logger.warning("web research transient failure: run_id=%s shift_id=%s attempt=%s error_type=%s elapsed_seconds=%.2f", run_id, shift_id, attempt, type(exc).__name__, time.monotonic() - attempt_started)
+                if attempt == 2:
+                    raise
+        if response is None:
+            raise RuntimeError("web research returned no response")
+        logger.info("web research response parsing started: run_id=%s shift_id=%s elapsed_seconds=%.2f", run_id, shift_id, time.monotonic() - started)
         message = response.json()["choices"][0]["message"]
         annotations = message.get("annotations") or []
         rows: list[dict] = []
@@ -541,4 +636,5 @@ class WorldShiftWebResearchService:
             generation_run_id=run_id, output={"evidence": rows}, generated_at=datetime.now(timezone.utc),
         ))
         session.flush()
+        logger.info("web research completed: run_id=%s shift_id=%s citations=%s elapsed_seconds=%.2f", run_id, shift_id, len(rows), time.monotonic() - started)
         return rows
