@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -23,10 +24,31 @@ from app.api.security import RateLimitMiddleware, TimeoutMiddleware
 from app.config import settings
 from app.db import init_db, session_scope
 from app.seed.demo import seed_demo
-from app.services.world_shift_refresh import refresh_service
+from app.services.world_shift_refresh import fail_orphaned_refresh_runs, refresh_service, reset_refresh_executor
 from app.services.world_shift_runtime import get_runtime_values
 
 logger = logging.getLogger(__name__)
+
+
+def configure_worldtune_diagnostic_logging() -> None:
+    """Send app diagnostics to stderr even when Uvicorn's root config filters INFO."""
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    for name in (
+        "app.main",
+        "app.services.world_shift_refresh",
+        "app.services.world_shift_ai",
+    ):
+        target = logging.getLogger(name)
+        target.setLevel(logging.INFO)
+        target.propagate = False
+        if not any(getattr(handler, "_worldtune_diagnostics", False) for handler in target.handlers):
+            handler = logging.StreamHandler(sys.stderr)
+            handler.setFormatter(formatter)
+            handler._worldtune_diagnostics = True
+            target.addHandler(handler)
+
+
+configure_worldtune_diagnostic_logging()
 
 
 async def _scheduled_world_shift_refresh() -> None:
@@ -56,6 +78,10 @@ async def _scheduled_world_shift_refresh() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    reset_refresh_executor()
+    recovered_runs = fail_orphaned_refresh_runs()
+    if recovered_runs:
+        logger.warning("World Shift startup recovered %s orphaned refresh run(s)", recovered_runs)
     if settings.auto_seed:
         try:
             with session_scope() as session:

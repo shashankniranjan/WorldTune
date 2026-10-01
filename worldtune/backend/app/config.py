@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     world_shift_refresh_interval_seconds: int = 86400
     world_shift_refresh_startup_delay_seconds: int = 5
     world_shift_web_research_enabled: bool = True
+    world_shift_fallback_preserve_current_evidence: bool = True
+    # Optional live, topic-scoped GDELT overlay. Keep off by default because
+    # the provider was returning HTTP 429 during the last bounded smoke check.
+    world_shift_live_gdelt_refresh_enabled: bool = False
     # Raised from 3: GDELT GKG metadata alone rarely carries enough prose for
     # the grounding filters to pass anything. More researched sources per
     # shift gives the semantic-extraction stage real specifics to ground on.
