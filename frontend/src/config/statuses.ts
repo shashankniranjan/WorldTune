@@ -1,0 +1,3 @@
+import type { Direction, ShiftStatus } from "@/types/worldShift";
+export const directionClass: Record<Direction, string> = { positive: "text-emerald-300", up: "text-emerald-300", negative: "text-rose-300", down: "text-rose-300", mixed: "text-amber-300", neutral: "text-slate-300", uncertain: "text-slate-400" };
+export const statusClass: Record<ShiftStatus, string> = { surging: "bg-emerald-400/15 text-emerald-300", rising: "bg-emerald-400/15 text-emerald-300", changing: "bg-amber-400/15 text-amber-300", watching: "bg-amber-400/15 text-amber-300", stable: "bg-slate-400/15 text-slate-300", declining: "bg-rose-400/15 text-rose-300", elevated: "bg-rose-400/15 text-rose-300" };

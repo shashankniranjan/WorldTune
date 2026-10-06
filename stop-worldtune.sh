@@ -4,46 +4,59 @@
 # Usage: ./stop-worldtune.sh
 set -uo pipefail
 
-BE_DIR="/Users/shashankniranjan/IdeaProjects/WorldTune-BE"
-RUN_DIR="$BE_DIR/.worldtune-run"
-BE_PID_FILE="$RUN_DIR/backend.pid"
-FE_PID_FILE="$RUN_DIR/frontend.pid"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_DIR="$ROOT/.worldtune-run"
+API_PORT=8090; WEB_PORT=3000
+# shellcheck disable=SC1091
+[ -f "$RUN_DIR/ports.env" ] && . "$RUN_DIR/ports.env"
 
-stop_one() {
-  local name="$1" pid_file="$2"
-  if [ ! -f "$pid_file" ]; then
-    echo "$name: not running (no PID file)."
-    return
-  fi
-  local pid; pid="$(cat "$pid_file" 2>/dev/null || true)"
-  if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
-    echo "$name: not running."
-    rm -f "$pid_file"
-    return
-  fi
-  echo "$name: stopping PID $pid ..."
-  # pnpm/npm fork the real dev-server process, so kill children first.
-  pkill -TERM -P "$pid" 2>/dev/null
-  kill -TERM "$pid" 2>/dev/null
+descendants() { # prints pid and all its descendants, deepest first
+  local pid="$1" child
+  for child in $(pgrep -P "$pid" 2>/dev/null); do descendants "$child"; done
+  echo "$pid"
+}
+
+kill_tree() { # pid
+  local pids; pids="$(descendants "$1")"
+  # shellcheck disable=SC2086
+  kill -TERM $pids 2>/dev/null
   for _ in $(seq 1 10); do
-    kill -0 "$pid" 2>/dev/null || break
+    local alive=0 p
+    for p in $pids; do kill -0 "$p" 2>/dev/null && alive=1; done
+    [ "$alive" = 0 ] && return 0
     sleep 0.5
   done
-  if kill -0 "$pid" 2>/dev/null; then
-    echo "$name: still running after SIGTERM, sending SIGKILL."
-    pkill -KILL -P "$pid" 2>/dev/null
-    kill -KILL "$pid" 2>/dev/null
+  # shellcheck disable=SC2086
+  kill -KILL $pids 2>/dev/null
+}
+
+stop_one() { # name pid_file
+  local name="$1" pid_file="$2" pid
+  if [ ! -f "$pid_file" ]; then echo "$name: not running (no PID file)."; return; fi
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+    echo "$name: not running."; rm -f "$pid_file"; return
   fi
+  echo "$name: stopping PID $pid ..."
+  kill_tree "$pid"
   rm -f "$pid_file"
   echo "$name: stopped."
 }
 
-stop_one "Backend" "$BE_PID_FILE"
-stop_one "Frontend" "$FE_PID_FILE"
+# Safety net: a process still listening on our port whose working directory is
+# inside this checkout (e.g. a lost PID file) is ours; anything else is left alone.
+stop_stray() { # name port
+  local name="$1" port="$2" pid cwd
+  for pid in $(lsof -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null); do
+    cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1)"
+    case "$cwd" in
+      "$ROOT"|"$ROOT"/*) echo "$name: stopping stray process $pid on port $port ..."; kill_tree "$pid" ;;
+    esac
+  done
+}
 
-# Fallback safety net in case a PID file was lost (e.g. after a machine
-# restart) and a process is still lingering.
-pkill -f "uvicorn app.main:app" 2>/dev/null && echo "Killed a stray backend (uvicorn) process."
-pkill -f "next-server \(v" 2>/dev/null && echo "Killed a stray frontend (next-server) process."
-
+stop_one "Frontend" "$RUN_DIR/frontend.pid"
+stop_one "Backend" "$RUN_DIR/backend.pid"
+stop_stray "Frontend" "$WEB_PORT"
+stop_stray "Backend" "$API_PORT"
 echo "Done."

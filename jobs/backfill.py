@@ -45,12 +45,12 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from worldpulse import config as config_module
-from worldpulse.config import settings
-from worldpulse.database import repository as repo
-from worldpulse.database.models import Base, PredictionORM, WorldEventORM
-from worldpulse.evaluation.calibration import compute_calibration_table
-from worldpulse.evaluation.scoring import compute_scoreboard
+from worldtune import config as config_module
+from worldtune.config import settings
+from worldtune.database import repository as repo
+from worldtune.database.models import Base, PredictionORM, WorldEventORM
+from worldtune.evaluation.calibration import compute_calibration_table
+from worldtune.evaluation.scoring import compute_scoreboard
 
 import jobs.create_predictions as create_predictions
 import jobs.ingest_market_data as ingest_market_data
@@ -209,7 +209,7 @@ def run_historical_backfill(
 
 
 def print_summary(summary: dict) -> None:
-    print("\n=== WorldPulse Backfill Scoreboard ===")
+    print("\n=== WorldTune Backfill Scoreboard ===")
     print(f"DATA MODE:              {summary.get('data_mode', 'FREE')}")
     print(f"Total events:           {summary.get('total_events', 0)} "
           f"in {summary.get('event_clusters', 0)} dedup clusters")

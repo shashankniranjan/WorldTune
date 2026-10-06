@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sys
 from contextlib import asynccontextmanager
 
@@ -121,7 +122,11 @@ def create_app() -> FastAPI:
     app.add_middleware(TimeoutMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_origins=[
+            o.strip() for o in os.environ.get(
+                "WORLDTUNE_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+            ).split(",") if o.strip()
+        ],
         allow_credentials=False,
         allow_methods=["GET", "PUT", "POST", "OPTIONS"],
         allow_headers=["*"],

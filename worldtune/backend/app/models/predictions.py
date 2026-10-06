@@ -4,7 +4,7 @@ Immutability contract
 ---------------------
 A `PredictionORM` row is written once and NEVER mutated. Resolution writes a
 *separate* `PredictionResultORM` row. This is deliberate and is the same
-discipline WorldPulse uses: if resolution were allowed to overwrite
+discipline the prediction engine uses: if resolution were allowed to overwrite
 `predicted_direction` or `predicted_probability`, every accuracy number the
 evaluation module produces would be unfalsifiable.
 

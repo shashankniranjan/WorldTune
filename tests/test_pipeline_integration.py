@@ -7,16 +7,16 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from worldpulse.database.models import PredictionORM
-from worldpulse.database.repository import get_events_as_of, save_events, save_bars
-from worldpulse.evaluation.outcome_resolver import resolve_predictions
-from worldpulse.evaluation.scoring import compute_scoreboard
-from worldpulse.events.classifier import RuleBasedEventClassifier
-from worldpulse.events.deduplication import cluster_events
-from worldpulse.ingestion.markets import SyntheticMarketDataProvider
-from worldpulse.ingestion.worldmonitor import MockWorldMonitorClient
-from worldpulse.markets.instruments import all_symbols
-from worldpulse.prediction.predictor import create_predictions_for_event, prediction_result_to_orm
+from worldtune.database.models import PredictionORM
+from worldtune.database.repository import get_events_as_of, save_events, save_bars
+from worldtune.evaluation.outcome_resolver import resolve_predictions
+from worldtune.evaluation.scoring import compute_scoreboard
+from worldtune.events.classifier import RuleBasedEventClassifier
+from worldtune.events.deduplication import cluster_events
+from worldtune.ingestion.markets import SyntheticMarketDataProvider
+from worldtune.ingestion.worldmonitor import MockWorldMonitorClient
+from worldtune.markets.instruments import all_symbols
+from worldtune.prediction.predictor import create_predictions_for_event, prediction_result_to_orm
 
 
 def test_full_pipeline_smoke(db_session):

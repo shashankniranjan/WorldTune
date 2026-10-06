@@ -11,11 +11,11 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from worldpulse.config import settings
-from worldpulse.database.models import PredictionORM
-from worldpulse.database.repository import get_default_session_factory, get_events_as_of, save_prediction
-from worldpulse.ingestion.markets import SyntheticMarketDataProvider
-from worldpulse.prediction.predictor import create_predictions_for_event, prediction_result_to_orm
+from worldtune.config import settings
+from worldtune.database.models import PredictionORM
+from worldtune.database.repository import get_default_session_factory, get_events_as_of, save_prediction
+from worldtune.ingestion.markets import SyntheticMarketDataProvider
+from worldtune.prediction.predictor import create_predictions_for_event, prediction_result_to_orm
 
 
 def run(now: datetime, seed: int | None = None, lookback_days: int = 365) -> int:

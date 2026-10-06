@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from worldpulse.ingestion.markets import Bar
-from worldpulse.markets.returns import compute_event_window_returns, simple_return
+from worldtune.ingestion.markets import Bar
+from worldtune.markets.returns import compute_event_window_returns, simple_return
 
 
 def make_bar(symbol, dt, close):

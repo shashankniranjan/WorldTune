@@ -21,6 +21,26 @@ venv/
 # OS/editor
 .DS_Store
 
-# worldpulse.sh / worldtune.sh runtime state (PIDs, logs)
+# worldtune-engine.sh runtime state (PIDs, logs)
 .run/
-worldtune/.run/
+
+# Platform runtime state (PIDs, logs) written by start-worldtune.sh
+.worldtune-run/
+
+# Frontend build artefacts
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+
+# Large data: bulk raw/processed GDELT and intermediate layers stay local.
+# Only the small published World Shift artifact ships with the repo so a fresh
+# clone can serve the UI immediately (see start-worldtune.sh).
+data/raw/
+data/processed/*
+!data/processed/worldtune/
+data/processed/worldtune/*
+!data/processed/worldtune/world_shifts/
+data_test/
+
+# Local credential notes must never be committed
+docs/api keys*

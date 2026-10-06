@@ -7,7 +7,7 @@ Endpoint:
                      location:{display_name, area[]}, created,
                      redirect_url, salary_min, salary_max, ...}]}
 
-Gated behind `is_available()` (the WorldPulse pattern for optional-key
+Gated behind `is_available()` (the prediction-engine pattern for optional-key
 providers): with `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` unset this adapter reports
 itself unavailable and the registry skips it -- it never raises and never
 blocks startup.

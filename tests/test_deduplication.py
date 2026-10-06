@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
-from worldpulse.events.classifier import RuleBasedEventClassifier
-from worldpulse.events.deduplication import cluster_events
-from worldpulse.ingestion.worldmonitor import RawNewsItem
+from worldtune.events.classifier import RuleBasedEventClassifier
+from worldtune.events.deduplication import cluster_events
+from worldtune.ingestion.worldmonitor import RawNewsItem
 
 classifier = RuleBasedEventClassifier()
 

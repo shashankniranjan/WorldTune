@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 import pytest
 
-from worldpulse.config import settings
-from worldpulse.ingestion.providers.country_focus import CountryFocus, get_focus, matches
+from worldtune.config import settings
+from worldtune.ingestion.providers.country_focus import CountryFocus, get_focus, matches
 
 
 @pytest.fixture(autouse=True)
@@ -70,7 +70,7 @@ def test_matches_by_text_hint():
 
 
 def test_gdelt_appends_sourcecountry_when_focused():
-    from worldpulse.ingestion.providers.gdelt import GDELTProvider
+    from worldtune.ingestion.providers.gdelt import GDELTProvider
 
     settings.country_focus = "IN"
     provider = GDELTProvider()
@@ -91,7 +91,7 @@ def test_gdelt_appends_sourcecountry_when_focused():
 
 
 def test_gdelt_no_country_filter_by_default():
-    from worldpulse.ingestion.providers.gdelt import GDELTProvider
+    from worldtune.ingestion.providers.gdelt import GDELTProvider
 
     settings.country_focus = None
     provider = GDELTProvider()
@@ -111,7 +111,7 @@ def test_gdelt_no_country_filter_by_default():
 
 
 def test_usgs_fdsn_query_gets_bbox_when_focused():
-    from worldpulse.ingestion.providers import usgs as usgs_module
+    from worldtune.ingestion.providers import usgs as usgs_module
 
     settings.country_focus = "IN"
     provider = usgs_module.USGSProvider()
@@ -136,7 +136,7 @@ def test_usgs_fdsn_query_gets_bbox_when_focused():
 
 
 def test_usgs_client_side_bbox_filters_features():
-    from worldpulse.ingestion.providers import usgs as usgs_module
+    from worldtune.ingestion.providers import usgs as usgs_module
 
     settings.country_focus = "IN"
     provider = usgs_module.USGSProvider(min_magnitude=0.0)

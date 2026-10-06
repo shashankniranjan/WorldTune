@@ -1,6 +1,6 @@
 import pytest
 
-from worldpulse.prediction.confidence import ConfidenceTier, assign_confidence_tier
+from worldtune.prediction.confidence import ConfidenceTier, assign_confidence_tier
 
 CASES = [
     # sample_size, probability, expected_tier

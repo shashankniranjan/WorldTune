@@ -6,7 +6,7 @@ PostgreSQL (docker-compose topology):
   * `UTCDateTime` -- SQLite's DateTime silently drops tzinfo on round-trip,
     which breaks every naive/aware comparison in the trend engine. This
     decorator stores naive-UTC and always hands back tz-aware UTC.
-    (Same trick WorldPulse uses; re-implemented here rather than imported,
+    (Same trick the prediction engine uses; re-implemented here rather than imported,
     to keep the two products decoupled.)
   * `JSONColumn` -- SQLAlchemy's generic `JSON` type maps to TEXT on SQLite
     and to native `json`/`jsonb` on Postgres, so the `metadata` bags in the

@@ -1,4 +1,4 @@
-"""`WORLDPULSE_MODE=free`: no paid code path may be reached, ever.
+"""`WORLDTUNE_MODE=free`: no paid code path may be reached, ever.
 
 `free` is the default mode. These tests assert it is enforced rather than
 merely documented: the paid World Monitor provider is refused by the
@@ -14,14 +14,14 @@ import httpx
 import pytest
 
 from tests import provider_fixtures as fx
-from worldpulse.config import PAID_PROVIDERS, settings
-from worldpulse.ingestion.providers import registry
+from worldtune.config import PAID_PROVIDERS, settings
+from worldtune.ingestion.providers import registry
 
 
 @pytest.fixture()
 def free_mode(monkeypatch):
-    monkeypatch.setenv("WORLDPULSE_MODE", "free")
-    monkeypatch.setattr(settings, "worldpulse_mode", "free")
+    monkeypatch.setenv("WORLDTUNE_MODE", "free")
+    monkeypatch.setattr(settings, "worldtune_mode", "free")
     monkeypatch.setattr(settings, "event_providers", "gdelt,usgs,eonet,gdacs")
     monkeypatch.setattr(settings, "worldmonitor_api_key", None)
     registry.reset_registry()
@@ -31,10 +31,10 @@ def free_mode(monkeypatch):
 
 def test_free_mode_is_the_default():
     """A fresh Settings() with no env overrides must be free/rules."""
-    from worldpulse.config import Settings
+    from worldtune.config import Settings
 
     fresh = Settings(_env_file=None)
-    assert fresh.worldpulse_mode == "free"
+    assert fresh.worldtune_mode == "free"
     assert fresh.is_free_mode is True
     assert fresh.data_mode == "FREE"
     assert fresh.ai_classifier == "rules"
@@ -54,12 +54,12 @@ def test_paid_provider_refused_in_free_mode_even_with_a_key(free_mode, monkeypat
     assert active == ["gdelt"]
     reason = registry.get_skips()["worldmonitor"]
     assert "paid" in reason.lower()
-    assert "WORLDPULSE_MODE=free" in reason
+    assert "WORLDTUNE_MODE=free" in reason
 
 
 def test_paid_provider_allowed_only_when_mode_is_paid(monkeypatch):
     """The escape hatch works, so `free` is a policy and not a dead end."""
-    monkeypatch.setattr(settings, "worldpulse_mode", "paid")
+    monkeypatch.setattr(settings, "worldtune_mode", "paid")
     monkeypatch.setattr(settings, "worldmonitor_api_key", "pretend-paid-key")
     monkeypatch.setattr(settings, "event_providers", "worldmonitor")
     registry.reset_registry()
@@ -98,21 +98,21 @@ def test_no_worldmonitor_http_call_during_a_pipeline_run(free_mode, db_session, 
         raise AssertionError("WorldMonitorSDKClient constructed in FREE mode")
 
     monkeypatch.setattr(
-        "worldpulse.ingestion.worldmonitor.WorldMonitorSDKClient.__init__", sdk_tripwire
+        "worldtune.ingestion.worldmonitor.WorldMonitorSDKClient.__init__", sdk_tripwire
     )
 
     # Drive the real providers through the mock transport.
-    from worldpulse.events.classifier import RuleBasedEventClassifier
-    from worldpulse.events.deduplication import (
+    from worldtune.events.classifier import RuleBasedEventClassifier
+    from worldtune.events.deduplication import (
         apply_cluster_corroboration,
         build_cluster_evidence,
         cluster_events,
     )
-    from worldpulse.database.repository import add_evidence, save_events
-    from worldpulse.ingestion.providers.eonet import EONETProvider
-    from worldpulse.ingestion.providers.gdacs import GDACSProvider
-    from worldpulse.ingestion.providers.gdelt import GDELTProvider
-    from worldpulse.ingestion.providers.usgs import USGSProvider
+    from worldtune.database.repository import add_evidence, save_events
+    from worldtune.ingestion.providers.eonet import EONETProvider
+    from worldtune.ingestion.providers.gdacs import GDACSProvider
+    from worldtune.ingestion.providers.gdelt import GDELTProvider
+    from worldtune.ingestion.providers.usgs import USGSProvider
 
     client = fx.make_client()
     events = []
@@ -138,8 +138,8 @@ def test_no_worldmonitor_http_call_during_a_pipeline_run(free_mode, db_session, 
 
 def test_ingest_job_in_free_mode_never_selects_worldmonitor(free_mode, monkeypatch, tmp_path):
     """The job entrypoint honours free mode too."""
-    from worldpulse import config as config_module
-    from worldpulse.database import repository as repo
+    from worldtune import config as config_module
+    from worldtune.database import repository as repo
     import jobs.ingest_world_events as ingest
 
     monkeypatch.setattr(config_module.settings, "database_url",
@@ -148,7 +148,7 @@ def test_ingest_job_in_free_mode_never_selects_worldmonitor(free_mode, monkeypat
     try:
         invoked: list[str] = []
         monkeypatch.setattr(
-            "worldpulse.ingestion.providers.worldmonitor.WorldMonitorProvider._fetch",
+            "worldtune.ingestion.providers.worldmonitor.WorldMonitorProvider._fetch",
             lambda *a, **k: invoked.append("worldmonitor") or [],
         )
         # `synthetic` is the offline provider: no network, no keys, and
@@ -171,12 +171,12 @@ def test_health_endpoint_advertises_free_mode(free_mode):
     client = TestClient(create_app())
     payload = client.get("/health").json()
     assert payload["data_mode"] == "FREE"
-    assert payload["worldpulse_mode"] == "free"
+    assert payload["worldtune_mode"] == "free"
     assert "worldmonitor" not in payload["event_providers"]
 
 
 def test_market_data_default_is_free_and_offline(free_mode):
-    from worldpulse.ingestion.markets import (
+    from worldtune.ingestion.markets import (
         SyntheticMarketDataProvider,
         get_market_data_provider,
     )
@@ -186,7 +186,7 @@ def test_market_data_default_is_free_and_offline(free_mode):
 
 def test_binance_and_stooq_need_no_credentials(free_mode):
     """Both free market providers parse real payload shapes with no auth."""
-    from worldpulse.ingestion.markets import (
+    from worldtune.ingestion.markets import (
         BinancePublicMarketProvider,
         StooqMarketProvider,
     )
@@ -209,9 +209,9 @@ def test_binance_and_stooq_need_no_credentials(free_mode):
 
 def test_context_providers_are_not_event_providers(free_mode):
     """FRED/EIA must never leak into the event stream."""
-    from worldpulse.ingestion.providers.base import WorldEventProvider
-    from worldpulse.ingestion.providers.eia import EIAProvider
-    from worldpulse.ingestion.providers.fred import FREDProvider
+    from worldtune.ingestion.providers.base import WorldEventProvider
+    from worldtune.ingestion.providers.eia import EIAProvider
+    from worldtune.ingestion.providers.fred import FREDProvider
 
     assert not issubclass(FREDProvider, WorldEventProvider)
     assert not issubclass(EIAProvider, WorldEventProvider)
@@ -222,8 +222,8 @@ def test_context_providers_are_not_event_providers(free_mode):
 def test_context_providers_parse_real_series_shapes(free_mode):
     from datetime import datetime, timezone
 
-    from worldpulse.ingestion.providers.eia import EIAProvider
-    from worldpulse.ingestion.providers.fred import FREDProvider
+    from worldtune.ingestion.providers.eia import EIAProvider
+    from worldtune.ingestion.providers.fred import FREDProvider
 
     client = fx.make_client()
     start = datetime(2024, 1, 1, tzinfo=timezone.utc)
@@ -246,8 +246,8 @@ def test_context_providers_parse_real_series_shapes(free_mode):
 def test_context_providers_return_empty_without_a_key(free_mode):
     from datetime import datetime, timezone
 
-    from worldpulse.ingestion.providers.eia import EIAProvider
-    from worldpulse.ingestion.providers.fred import FREDProvider
+    from worldtune.ingestion.providers.eia import EIAProvider
+    from worldtune.ingestion.providers.fred import FREDProvider
 
     start = datetime(2024, 1, 1, tzinfo=timezone.utc)
     end = datetime(2024, 1, 16, tzinfo=timezone.utc)

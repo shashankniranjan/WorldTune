@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 
-from worldpulse.events.schemas import EventDomain, WorldEvent
-from worldpulse.similarity.embeddings import embed_event
-from worldpulse.similarity.ranking import rerank
-from worldpulse.similarity.retrieval import retrieve_analogues
+from worldtune.events.schemas import EventDomain, WorldEvent
+from worldtune.similarity.embeddings import embed_event
+from worldtune.similarity.ranking import rerank
+from worldtune.similarity.retrieval import retrieve_analogues
 
 
 def make_event(event_id, event_type, subtype, countries, entities, channels, severity):

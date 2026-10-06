@@ -3,16 +3,15 @@
 **WorldTune doesn't show you the world. It shows you the part of the world that matters to you.**
 
 WorldTune is a personalization, ranking and forecasting layer that sits conceptually on top of
-WorldPulse's global signal collection. Where WorldPulse answers "what is happening in the
+WorldTune's global signal collection. Where WorldTune answers "what is happening in the
 world," WorldTune answers:
 
 > What is happening that matters to *me*, why does it matter, what is heating up or cooling
 > down, and where might it be heading?
 
 It is a separate product living in this repo (`worldtune/`), sharing no code with
-`src/worldpulse/` — its own FastAPI backend, its own Next.js frontend, its own Postgres
-database, its own tests. See `worldtune/backend/` and `worldtune/frontend/` for the
-implementation; this document is the product/architecture overview.
+`src/worldtune/` — its own FastAPI backend, its own Postgres
+database, its own tests. See `worldtune/backend/` for the backend and the top-level `frontend/` for the UI; this document is the product/architecture overview.
 
 ## The two verticals
 
@@ -154,19 +153,13 @@ pip install -e ".[dev]"     # or: pip install --break-system-packages -e ".[dev]
 uvicorn app.main:app --port 8090 --reload
 ```
 
-```bash
-cd worldtune/frontend
-npm install
-echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:8090" > .env.local
-npm run dev
-```
-
-Open `http://localhost:3000`.
+Or run backend and the top-level `frontend/` together with `./start-worldtune.sh`
+(repo root), then open `http://localhost:3000`.
 
 Docker (also zero-config by default):
 
 ```bash
-docker compose up worldtune-api worldtune-web postgres
+docker compose up worldtune-web
 ```
 API on `:8100`, frontend on `:3000` (frontend is built to call `:8100` in the compose topology —
 see `docker-compose.yml` for exactly how the two ports are wired).
@@ -238,7 +231,7 @@ Three deliberately separate kinds of "intelligence," per the spec:
 
 1. **Relevance model** — "how important is this to this user": rules + weighted scoring +
    a deterministic hashing-trick embedding similarity (no downloaded model, no network
-   dependency — the same honest simplification WorldPulse uses).
+   dependency — the same honest simplification WorldTune uses).
 2. **Trend engine** — "is this heating up or cooling down": real time-series statistics
    (7d/30d change, acceleration, moving averages, z-scores) computed with pandas/numpy.
    Explicitly not an LLM.
@@ -306,7 +299,7 @@ model call at all.
 
 Every prediction is stored immutably at creation time (entity, type, horizon, predicted
 direction, predicted probability, model version) and only ever gains resolution fields later
-(actual outcome, correct/incorrect) — the same immutable-then-resolved discipline WorldPulse
+(actual outcome, correct/incorrect) — the same immutable-then-resolved discipline WorldTune
 uses for its own predictions, enforced by tests. Financial predictions are scored on direction
 accuracy, precision/recall/F1, Brier score, calibration, and ROC AUC where applicable; career
 predictions on MAE, direction accuracy, trend correlation, and ranking stability. `GET

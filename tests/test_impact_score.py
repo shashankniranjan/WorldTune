@@ -1,4 +1,4 @@
-from worldpulse.events.schemas import ImpactScoreInputs, impact_candidate_score
+from worldtune.events.schemas import ImpactScoreInputs, impact_candidate_score
 
 
 def test_impact_score_formula_hand_computed():
