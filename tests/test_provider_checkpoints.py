@@ -12,16 +12,16 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 
 from tests import provider_fixtures as fx
-from worldpulse.database.models import EventEvidenceORM, WorldEventORM
-from worldpulse.database.repository import (
+from worldtune.database.models import EventEvidenceORM, WorldEventORM
+from worldtune.database.repository import (
     add_evidence,
     event_exists,
     get_checkpoint,
     save_events,
     set_checkpoint,
 )
-from worldpulse.events.deduplication import build_cluster_evidence, cluster_events
-from worldpulse.ingestion.providers.usgs import USGSProvider
+from worldtune.events.deduplication import build_cluster_evidence, cluster_events
+from worldtune.ingestion.providers.usgs import USGSProvider
 
 
 def _usgs_events():
@@ -100,8 +100,8 @@ def test_event_exists_is_false_for_unknown_and_blank_ids(db_session):
 
 def test_ingest_job_resumes_from_the_checkpoint(monkeypatch, tmp_path):
     """The job must narrow the fetch window to the provider's watermark."""
-    from worldpulse import config as config_module
-    from worldpulse.database import repository as repo
+    from worldtune import config as config_module
+    from worldtune.database import repository as repo
     import jobs.ingest_world_events as ingest
 
     monkeypatch.setattr(config_module.settings, "database_url",
@@ -118,10 +118,10 @@ def test_ingest_job_resumes_from_the_checkpoint(monkeypatch, tmp_path):
                 return super().fetch_events(start_time, end_time)
 
         monkeypatch.setattr(
-            "worldpulse.ingestion.providers.registry.EVENT_PROVIDER_FACTORIES",
+            "worldtune.ingestion.providers.registry.EVENT_PROVIDER_FACTORIES",
             {"usgs": lambda: RecordingProvider(client=fx.make_client())},
         )
-        from worldpulse.ingestion.providers import registry
+        from worldtune.ingestion.providers import registry
 
         registry.reset_registry()
 
@@ -151,7 +151,7 @@ def test_ingest_job_resumes_from_the_checkpoint(monkeypatch, tmp_path):
         finally:
             session.close()
     finally:
-        from worldpulse.ingestion.providers import registry as reg
+        from worldtune.ingestion.providers import registry as reg
 
         reg.reset_registry()
         repo.reset_default_session_factory()

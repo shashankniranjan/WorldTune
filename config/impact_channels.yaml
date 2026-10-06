@@ -1,4 +1,4 @@
-# WorldPulse deterministic event -> asset impact channel mapping.
+# WorldTune deterministic event -> asset impact channel mapping.
 #
 # This file is the single source of truth for "which instruments could this
 # kind of event plausibly move". The rule-based classifier and the feature

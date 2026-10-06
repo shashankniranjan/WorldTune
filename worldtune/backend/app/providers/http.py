@@ -1,6 +1,6 @@
 """Shared outbound HTTP helper for WorldTune's provider adapters.
 
-Same shape as WorldPulse's `http_utils` (timeouts, exponential backoff,
+Same shape as the prediction engine's `http_utils` (timeouts, exponential backoff,
 `Retry-After` respect, one User-Agent) but WorldTune's own copy -- the two
 products deliberately share no imports.
 

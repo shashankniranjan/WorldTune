@@ -1,4 +1,4 @@
-"""WorldPulse Streamlit dashboard.
+"""WorldTune Streamlit dashboard.
 
 Run with: streamlit run apps/dashboard/app.py
 
@@ -27,19 +27,19 @@ for p in (str(REPO_ROOT / "src"), str(REPO_ROOT)):
 
 from sqlalchemy import select  # noqa: E402
 
-from worldpulse.agents.investigator import TemplatedInvestigator  # noqa: E402
-from worldpulse.database.models import PredictionORM, WorldEventORM  # noqa: E402
-from worldpulse.database.repository import (  # noqa: E402
+from worldtune.agents.investigator import TemplatedInvestigator  # noqa: E402
+from worldtune.database.models import PredictionORM, WorldEventORM  # noqa: E402
+from worldtune.database.repository import (  # noqa: E402
     _orm_to_event, get_bars_as_of, get_default_session_factory, get_events_as_of,
 )
-from worldpulse.evaluation.calibration import compute_calibration_table  # noqa: E402
-from worldpulse.evaluation.scoring import compute_scoreboard  # noqa: E402
-from worldpulse.ingestion.markets import SyntheticMarketDataProvider  # noqa: E402
-from worldpulse.prediction.predictor import PredictionResult  # noqa: E402
-from worldpulse.similarity.retrieval import retrieve_analogues  # noqa: E402
-from worldpulse.similarity.ranking import rerank  # noqa: E402
+from worldtune.evaluation.calibration import compute_calibration_table  # noqa: E402
+from worldtune.evaluation.scoring import compute_scoreboard  # noqa: E402
+from worldtune.ingestion.markets import SyntheticMarketDataProvider  # noqa: E402
+from worldtune.prediction.predictor import PredictionResult  # noqa: E402
+from worldtune.similarity.retrieval import retrieve_analogues  # noqa: E402
+from worldtune.similarity.ranking import rerank  # noqa: E402
 
-st.set_page_config(page_title="WorldPulse", layout="wide")
+st.set_page_config(page_title="WorldTune", layout="wide")
 
 
 @st.cache_resource
@@ -74,7 +74,7 @@ def run_demo_pipeline(days: int = 10, seed: int = 42):
     st.success(f"Demo pipeline complete: simulated {days} days.")
 
 
-st.sidebar.title("WorldPulse")
+st.sidebar.title("WorldTune")
 page = st.sidebar.radio(
     "Page",
     ["World Pulse", "Event Investigator", "Prediction Board", "Prediction Replay", "Scoreboard"],

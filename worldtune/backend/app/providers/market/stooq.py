@@ -6,7 +6,7 @@ Endpoint:
 
 Chosen over Yahoo Finance's undocumented `query1.finance.yahoo.com/v8/...`
 JSON because Stooq publishes a stable, documented CSV URL that needs no
-cookie/crumb dance. Same idea as WorldPulse's equities feed, re-implemented
+cookie/crumb dance. Same idea as the prediction engine's equities feed, re-implemented
 here so the two products share no code.
 
 Quirks handled below, all of which are real and will bite otherwise:

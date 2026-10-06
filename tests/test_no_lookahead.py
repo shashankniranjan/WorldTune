@@ -9,10 +9,10 @@ import uuid
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 
-from worldpulse.database.repository import get_bars_as_of, get_events_as_of, save_bars, save_events
-from worldpulse.events.schemas import EventDomain, WorldEvent
-from worldpulse.ingestion.markets import Bar, SyntheticMarketDataProvider
-from worldpulse.prediction.predictor import create_predictions_for_event
+from worldtune.database.repository import get_bars_as_of, get_events_as_of, save_bars, save_events
+from worldtune.events.schemas import EventDomain, WorldEvent
+from worldtune.ingestion.markets import Bar, SyntheticMarketDataProvider
+from worldtune.prediction.predictor import create_predictions_for_event
 
 EPOCH = datetime(2023, 1, 1, tzinfo=timezone.utc)
 

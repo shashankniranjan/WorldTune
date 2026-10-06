@@ -1,4 +1,4 @@
-# WorldPulse -- Dashboard UI Spec
+# WorldTune -- Dashboard UI Spec
 
 Implemented as a single Streamlit app (`apps/dashboard/app.py`) with a
 sidebar page selector for 5 screens, plus a "Run demo pipeline" control
@@ -6,7 +6,7 @@ that drives the full ingest -> predict -> resolve loop at simulated
 timestamps so a viewer can see results without waiting real hours.
 
 All screens read from the same SQLite database (via
-`worldpulse.database.repository`) that the API and jobs use.
+`worldtune.database.repository`) that the API and jobs use.
 
 ## Sidebar (always visible)
 

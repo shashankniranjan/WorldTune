@@ -1,0 +1,96 @@
+{
+  "generated_shifts": 120,
+  "categories": [
+    "crypto",
+    "geopolitics",
+    "india",
+    "macro_policy",
+    "metals",
+    "technology"
+  ],
+  "topics": [
+    "AI Infrastructure",
+    "Armed Conflict and Military Escalation",
+    "Cloud Infrastructure",
+    "Crypto Regulation",
+    "Cybersecurity",
+    "Gold and Safe Havens",
+    "India Digital Policy",
+    "Inflation and Rates",
+    "Quantum Computing",
+    "Sanctions and Economic Warfare",
+    "Semiconductors"
+  ],
+  "excluded_broad_category": "all",
+  "gravity_weights": {
+    "world": 0.6,
+    "persona": 0.4
+  },
+  "priority_weights": {
+    "gravity": 0.5,
+    "attention": 0.35,
+    "evidence_quality": 0.15
+  },
+  "minimum_priority": 0.35,
+  "impact_priors": {
+    "AI Infrastructure": [
+      0.65,
+      0.95
+    ],
+    "Semiconductors": [
+      0.75,
+      0.9
+    ],
+    "Cloud Infrastructure": [
+      0.6,
+      0.9
+    ],
+    "Cybersecurity": [
+      0.8,
+      0.9
+    ],
+    "Quantum Computing": [
+      0.55,
+      0.75
+    ],
+    "Crypto Regulation": [
+      0.65,
+      1.0
+    ],
+    "Inflation and Rates": [
+      0.85,
+      0.9
+    ],
+    "Gold and Safe Havens": [
+      0.6,
+      0.9
+    ],
+    "India Digital Policy": [
+      0.65,
+      1.0
+    ],
+    "Armed Conflict and Military Escalation": [
+      1.0,
+      0.85
+    ],
+    "Sanctions and Economic Warfare": [
+      0.9,
+      0.85
+    ],
+    "Energy and Trade Route Disruption": [
+      0.9,
+      0.9
+    ],
+    "Diplomatic Crisis": [
+      0.75,
+      0.65
+    ]
+  },
+  "persona_profile": "India-based data/AI engineer in European technology consulting; crypto participant; gold, silver and HINDALCO context",
+  "limitations": [
+    "impact priors are explicit product-policy judgements, not observed facts",
+    "subtopics are vocabulary-based discovery candidates, not verified events",
+    "GDELT-only evidence cannot confirm real-world activity or causal relationships",
+    "empty source titles receive a non-empty UI-safe fallback"
+  ]
+}

@@ -2,7 +2,7 @@
 
 Last validated: 20 September 2026
 
-This document describes what is currently present and tested in the WorldPulse repository. It is a prototype data-validation and personalization layer, not a production data platform or trading system.
+This document describes what is currently present and tested in the WorldTune repository. It is a prototype data-validation and personalization layer, not a production data platform or trading system.
 
 ## Current persona
 

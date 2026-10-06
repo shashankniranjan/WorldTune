@@ -1,6 +1,6 @@
 """Cross-source dedup: one real event reported by three providers.
 
-The 2024 Hualien (Taiwan) earthquake would arrive at WorldPulse three
+The 2024 Hualien (Taiwan) earthquake would arrive at WorldTune three
 times: as a USGS ComCat seismic record, as a GDELT news article, and as an
 EONET natural-event entry. They agree on time and place but share almost
 no vocabulary, so embedding similarity alone cannot merge them. These
@@ -15,20 +15,20 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from tests import provider_fixtures as fx
-from worldpulse.database.repository import (
+from worldtune.database.repository import (
     add_evidence,
     get_evidence_for_cluster,
     get_evidence_for_event,
     save_events,
 )
-from worldpulse.events.deduplication import (
+from worldtune.events.deduplication import (
     build_cluster_evidence,
     cluster_events,
     is_cross_source_match,
 )
-from worldpulse.ingestion.providers.eonet import EONETProvider
-from worldpulse.ingestion.providers.gdelt import GDELTProvider
-from worldpulse.ingestion.providers.usgs import USGSProvider
+from worldtune.ingestion.providers.eonet import EONETProvider
+from worldtune.ingestion.providers.gdelt import GDELTProvider
+from worldtune.ingestion.providers.usgs import USGSProvider
 
 QUAKE_AT = datetime(2024, 1, 15, 12, 0, tzinfo=timezone.utc)
 
@@ -132,7 +132,7 @@ def test_incompatible_domains_never_merge():
     policy.provider = "gdelt"
     policy.provider_event_id = "https://example.test/rate-decision"
     policy.source_id = "gdelt:rate"
-    from worldpulse.events.schemas import EventDomain
+    from worldtune.events.schemas import EventDomain
 
     policy.event_type = EventDomain.ECONOMIC.value
     policy.event_domain = EventDomain.ECONOMIC.value
@@ -158,8 +158,8 @@ def test_same_provider_pairs_use_the_embedding_path_not_the_geo_rule():
 
 def test_existing_same_provider_news_dedup_still_works():
     """Regression guard: the pre-existing embedding path is untouched."""
-    from worldpulse.events.classifier import RuleBasedEventClassifier
-    from worldpulse.ingestion.worldmonitor import RawNewsItem
+    from worldtune.events.classifier import RuleBasedEventClassifier
+    from worldtune.ingestion.worldmonitor import RawNewsItem
 
     classifier = RuleBasedEventClassifier()
     t0 = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)

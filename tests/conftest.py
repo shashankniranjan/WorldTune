@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from worldpulse.database.repository import init_db, make_engine, make_session_factory
+from worldtune.database.repository import init_db, make_engine, make_session_factory
 
 
 @pytest.fixture()

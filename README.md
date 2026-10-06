@@ -1,6 +1,6 @@
-# WorldPulse
+# WorldTune
 
-WorldPulse turns a stream of real-world events (conflict, military
+WorldTune turns a stream of real-world events (conflict, military
 activity, energy disruption, economic/policy announcements, natural
 disasters) into market-impact predictions: for each event, it finds
 historically similar past events, looks at what actually happened to
@@ -10,21 +10,38 @@ horizons (1h/4h/8h/12h/24h). A background resolver later fills in what
 actually happened, and a scoring layer reports how good the predictions
 really are versus simple baselines.
 
-**WorldPulse runs at zero cost, with no API keys and no paid
+**WorldTune runs at zero cost, with no API keys and no paid
 subscriptions.** Events come from open public feeds (GDELT, USGS, NASA
 EONET, GDACS), market data from Binance's and Stooq's free public
 endpoints, and event classification from a deterministic rule engine that
 needs no LLM. Everything below the "FREE QUICK START" line works with an
 empty `.env`.
 
+## Run the whole platform (one command)
+
+```bash
+./start-worldtune.sh     # first run: sets up Python/Node deps and asks for your OpenRouter key
+./stop-worldtune.sh      # stops backend + frontend
+```
+
+Requirements: Python 3.10+ and Node.js 18+. Nothing else needs installing.
+The first run asks for an OpenRouter API key (press Enter to skip; briefings then use the
+deterministic fallback). The key is saved to `./.env` and to your shell profile as
+`OPENROUTER_API_KEY`; use `./start-worldtune.sh --set-key` to change it.
+App: http://localhost:3000 - API: http://localhost:8090 (`API_PORT` / `WEB_PORT` override).
+
+Layout: `frontend/` (Next.js UI), `worldtune/backend/` (FastAPI World Shifts API),
+`src/worldtune/` + `jobs/` + `apps/` (event-impact prediction engine, formerly WorldPulse).
+
 ---
+
 
 ## FREE QUICK START
 
 No account, no key, no card. Four commands:
 
 ```bash
-git clone <your-fork-url> && cd WorldPulse
+git clone <your-fork-url> && cd WorldTune
 cp .env.example .env                 # every value in it is optional
 pip install -e ".[dev]"
 
@@ -100,7 +117,7 @@ cleanly; nothing breaks.
 
 | Provider | Env var | Status |
 |---|---|---|
-| World Monitor intel API | `WORLDMONITOR_API_KEY` | Entirely optional. Not in the default `EVENT_PROVIDERS`, and refused outright while `WORLDPULSE_MODE=free` (the default). WorldPulse is fully functional with this unset — see `tests/test_no_worldmonitor_required.py`. |
+| World Monitor intel API | `WORLDMONITOR_API_KEY` | Entirely optional. Not in the default `EVENT_PROVIDERS`, and refused outright while `WORLDTUNE_MODE=free` (the default). WorldTune is fully functional with this unset — see `tests/test_no_worldmonitor_required.py`. |
 
 Full details per provider — historical depth, update frequency, rate
 limits, data-quality caveats, fallback behaviour — are in
@@ -111,7 +128,7 @@ limits, data-quality caveats, fallback behaviour — are in
 ## Architecture in one paragraph
 
 Every event source implements one port, `WorldEventProvider`
-(`src/worldpulse/ingestion/providers/base.py`), so the pipeline is
+(`src/worldtune/ingestion/providers/base.py`), so the pipeline is
 decoupled from which feeds are configured. `EVENT_PROVIDERS` selects them;
 the registry instantiates only those whose `is_available()` is True and
 logs the rest as skipped. Providers normalize into the single `WorldEvent`
@@ -149,11 +166,11 @@ that decide behaviour:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `WORLDPULSE_MODE` | `free` | `free` refuses every paid provider and makes `/health` report `"data_mode": "FREE"`. `paid` allows them. |
+| `WORLDTUNE_MODE` | `free` | `free` refuses every paid provider and makes `/health` report `"data_mode": "FREE"`. `paid` allows them. |
 | `EVENT_PROVIDERS` | `gdelt,usgs,eonet,gdacs` | Comma list of event sources. The default four need no key. |
 | `AI_CLASSIFIER` | `rules` | Deterministic rule classifier, no LLM key required. |
 | `MARKET_DATA_PROVIDER` | `synthetic` | `binance` / `stooq` / `free` for real free prices; `synthetic` for offline determinism. |
-| `DATABASE_URL` | `sqlite:///./worldpulse.db` | SQLite by default; Postgres+pgvector via `docker-compose.yml`. |
+| `DATABASE_URL` | `sqlite:///./worldtune.db` | SQLite by default; Postgres+pgvector via `docker-compose.yml`. |
 | `IMPACT_THRESHOLD` | `0.60` | Minimum impact-candidate score to attempt a prediction. |
 | `WORLDMONITOR_API_KEY` | *(unset)* | **Optional, paid.** Leave blank. |
 
@@ -175,7 +192,7 @@ runs deterministically with no network:
 | Event extraction | `RuleBasedEventClassifier` (`AI_CLASSIFIER=rules`, the default) -- deterministic keyword rules plus the `config/impact_channels.yaml` event->asset mapping table; **needs no key** | `LLMEventClassifier` -- structured-output call skeleton, requires `OPENAI_API_KEY` / `GROQ_API_KEY` / `OPENROUTER_API_KEY` |
 | Prediction explanation | `TemplatedInvestigator` -- templated text over the deterministic statistical output | `LLMInvestigator` -- same prompts (`agents/prompts.py`), requires `OPENAI_API_KEY` |
 | Embeddings | Hashing-trick bag-of-words vector (`similarity/embeddings.py`), no network/model download | (not implemented) a real sentence embedding model, or pgvector's ANN index in Postgres |
-| Database | SQLite (`sqlite:///./worldpulse.db`), zero external services | Postgres + pgvector, wired via `docker-compose.yml`; the same SQLAlchemy models work against both (see `database/models.py::UTCDateTime` and the comment on the `embedding` column) |
+| Database | SQLite (`sqlite:///./worldtune.db`), zero external services | Postgres + pgvector, wired via `docker-compose.yml`; the same SQLAlchemy models work against both (see `database/models.py::UTCDateTime` and the comment on the `embedding` column) |
 
 Two smaller, explicitly-documented simplifications (see `docs/LLD.md`
 section 4 for detail): analogue matching uses raw returns rather than the
@@ -189,10 +206,10 @@ prediction row.
 ## Repository layout
 
 ```
-worldpulse/
+worldtune/
 ├── apps/api/main.py            FastAPI app factory
 ├── apps/dashboard/app.py       Streamlit dashboard (5 pages)
-├── src/worldpulse/
+├── src/worldtune/
 │   ├── config.py                Settings (thresholds, DB URL, keys)
 │   ├── ingestion/
 │   │   ├── providers/            One adapter per event source (base, registry,

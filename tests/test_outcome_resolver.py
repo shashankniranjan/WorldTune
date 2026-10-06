@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from worldpulse.database.models import PredictionORM, WorldEventORM
-from worldpulse.database.repository import save_bars
-from worldpulse.evaluation.outcome_resolver import resolve_predictions
-from worldpulse.ingestion.markets import SyntheticMarketDataProvider
+from worldtune.database.models import PredictionORM, WorldEventORM
+from worldtune.database.repository import save_bars
+from worldtune.evaluation.outcome_resolver import resolve_predictions
+from worldtune.ingestion.markets import SyntheticMarketDataProvider
 
 
 def _make_event_row(event_id, occurred_at):

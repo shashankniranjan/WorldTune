@@ -24,20 +24,20 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from tests import provider_fixtures as fx
-from worldpulse.events.schemas import EventDomain, WorldEvent
-from worldpulse.ingestion.providers.acled import ACLEDProvider
-from worldpulse.ingestion.providers.base import WorldEventProvider
-from worldpulse.ingestion.providers.eonet import EONETProvider
-from worldpulse.ingestion.providers.firms import FIRMSProvider
-from worldpulse.ingestion.providers.gdacs import GDACSProvider
-from worldpulse.ingestion.providers.gdelt import GDELTProvider
-from worldpulse.ingestion.providers.usgs import USGSProvider
-from worldpulse.ingestion.providers.registry import EVENT_PROVIDER_FACTORIES
-from worldpulse.ingestion.providers.worldmonitor import (
+from worldtune.events.schemas import EventDomain, WorldEvent
+from worldtune.ingestion.providers.acled import ACLEDProvider
+from worldtune.ingestion.providers.base import WorldEventProvider
+from worldtune.ingestion.providers.eonet import EONETProvider
+from worldtune.ingestion.providers.firms import FIRMSProvider
+from worldtune.ingestion.providers.gdacs import GDACSProvider
+from worldtune.ingestion.providers.gdelt import GDELTProvider
+from worldtune.ingestion.providers.usgs import USGSProvider
+from worldtune.ingestion.providers.registry import EVENT_PROVIDER_FACTORIES
+from worldtune.ingestion.providers.worldmonitor import (
     SyntheticEventProvider,
     WorldMonitorProvider,
 )
-from worldpulse.ingestion.worldmonitor import MockWorldMonitorClient
+from worldtune.ingestion.worldmonitor import MockWorldMonitorClient
 
 # The synthetic timeline is sparse (~1 event/day over 10 years), so the
 # offline providers get a wider window than the fixture-backed ones.

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from worldpulse.ingestion.markets import Bar
-from worldpulse.markets.abnormal_returns import abnormal_return, compute_abnormal_returns, rolling_baseline_volatility
+from worldtune.ingestion.markets import Bar
+from worldtune.markets.abnormal_returns import abnormal_return, compute_abnormal_returns, rolling_baseline_volatility
 
 
 def make_bar(symbol, dt, close):

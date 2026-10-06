@@ -11,11 +11,11 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 
-from worldpulse.config import settings
-from worldpulse.database.models import MarketBarORM
-from worldpulse.database.repository import get_default_session_factory, save_bars
-from worldpulse.ingestion.markets import SyntheticMarketDataProvider
-from worldpulse.markets.instruments import all_symbols
+from worldtune.config import settings
+from worldtune.database.models import MarketBarORM
+from worldtune.database.repository import get_default_session_factory, save_bars
+from worldtune.ingestion.markets import SyntheticMarketDataProvider
+from worldtune.markets.instruments import all_symbols
 
 
 def run(now: datetime, lookback_days: int = 60, seed: int | None = None, interval: str = "1h") -> int:

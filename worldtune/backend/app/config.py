@@ -1,8 +1,8 @@
 """Central configuration for WorldTune.
 
-Mirrors the WorldPulse pattern (pydantic-settings, everything overridable by
-env var / .env) but is a *separate* settings object: WorldTune never imports
-from `worldpulse.*`, the two products stay decoupled.
+Mirrors the prediction-engine pattern (pydantic-settings, everything overridable by
+env var / .env) but is a *separate* settings object: the persona layer never imports
+from `src/worldtune`, the two products stay decoupled.
 
 Design rule: every setting has a working default, and every credential
 defaults to None. A provider whose credential is missing disables itself via

@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data/raw/gdelt"
 PROCESSED = ROOT / "data/processed/gdelt"
 INDEX_URL = "https://data.gdeltproject.org/gdeltv2/masterfilelist.txt"
-UA = "WorldPulse-GDELT-bulk-validation/1.0"
+UA = "WorldTune-GDELT-bulk-validation/1.0"
 log = logging.getLogger("gdelt_bulk")
 
 

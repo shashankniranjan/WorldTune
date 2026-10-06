@@ -6,7 +6,7 @@
 #
 #     docker build -f worldtune/Dockerfile worldtune/
 #
-# Separate from WorldPulse's Dockerfile: the two products share no code and no
+# Separate from WorldTune's Dockerfile: the two products share no code and no
 # dependency set.
 FROM python:3.11-slim
 

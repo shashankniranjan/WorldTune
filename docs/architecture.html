@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WorldPulse Architecture</title>
+<title>WorldTune Architecture</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root{
@@ -109,10 +109,10 @@
 <div class="page">
 
   <header class="masthead">
-    <div class="eyebrow"><span class="dot"></span> worldpulse / docs / architecture</div>
+    <div class="eyebrow"><span class="dot"></span> worldtune / docs / architecture</div>
     <h1>Two views of the same pipeline</h1>
     <p class="lede">
-      The system-context view (HLD) shows which external feeds WorldPulse trusts and
+      The system-context view (HLD) shows which external feeds WorldTune trusts and
       where the free/paid decision actually gets enforced. The data-layer view (LLD)
       shows the one rule the whole prediction engine depends on: nothing timestamped
       after <span class="mono">as_of</span> is ever visible to a prediction being made
@@ -123,7 +123,7 @@
   <!-- ======================= FIGURE 1 : HLD ======================= -->
   <section>
     <div class="section-head">
-      <h2>1. System context — who feeds WorldPulse, and where the gate sits</h2>
+      <h2>1. System context — who feeds WorldTune, and where the gate sits</h2>
       <span class="tag">docs/HLD.md &sect;3</span>
     </div>
     <p class="claim">
@@ -131,7 +131,7 @@
       only thing downstream code ever sees is a <span class="mono">WorldEvent</span>.
       The mechanism worth seeing is the <span class="mono">registry.py</span> gate:
       it is the single place that decides "does this source run at all," based on
-      whether a key is present and whether <span class="mono">WORLDPULSE_MODE=free</span>
+      whether a key is present and whether <span class="mono">WORLDTUNE_MODE=free</span>
       allows it — so a missing <span class="mono">WORLDMONITOR_API_KEY</span> is a
       normal, logged skip, never a crash.
     </p>
@@ -145,7 +145,7 @@
     <figure>
       <div class="diagram-frame">
         <svg class="arch" viewBox="0 0 1040 470" role="img"
-             aria-label="External event and market sources connect to a registry gate that checks each provider's is_available() and the WORLDPULSE_MODE, admitting only permitted providers into the canonical WorldEvent model, which then flows through classify+dedup, storage, similarity+prediction, evaluation, and out through the API to the dashboard and investigator.">
+             aria-label="External event and market sources connect to a registry gate that checks each provider's is_available() and the WORLDTUNE_MODE, admitting only permitted providers into the canonical WorldEvent model, which then flows through classify+dedup, storage, similarity+prediction, evaluation, and out through the API to the dashboard and investigator.">
 
           <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -156,7 +156,7 @@
           <!-- column labels -->
           <text x="150" y="26" text-anchor="middle" class="mono small muted">EXTERNAL SOURCES</text>
           <text x="430" y="26" text-anchor="middle" class="mono small muted">GATE</text>
-          <text x="660" y="26" text-anchor="middle" class="mono small muted">WORLDPULSE PIPELINE</text>
+          <text x="660" y="26" text-anchor="middle" class="mono small muted">WORLDTUNE PIPELINE</text>
           <text x="960" y="26" text-anchor="middle" class="mono small muted">CONSUMERS</text>
 
           <!-- source boxes -->

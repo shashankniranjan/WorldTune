@@ -31,7 +31,7 @@ def main() -> None:
     key = os.getenv("DATA_GOV_IN_API_KEY")
     if not key: raise SystemExit("DATA_GOV_IN_API_KEY is required and is never written to disk")
     RAW.mkdir(parents=True, exist_ok=True); OUT.mkdir(parents=True, exist_ok=True)
-    session = requests.Session(); session.headers.update({"User-Agent":"WorldPulse-data-gov-in-test/1.0"})
+    session = requests.Session(); session.headers.update({"User-Agent":"WorldTune-data-gov-in-test/1.0"})
     report = {"source":"data.gov.in","generated_at_utc":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"resources":[]}
     selected = [args.resource] if args.resource else list(RESOURCES)
     if not args.recursive and not args.resource:

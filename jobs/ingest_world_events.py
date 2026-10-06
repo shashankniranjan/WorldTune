@@ -30,21 +30,21 @@ import argparse
 import logging
 from datetime import datetime, timedelta, timezone
 
-from worldpulse.config import settings
-from worldpulse.database.repository import (
+from worldtune.config import settings
+from worldtune.database.repository import (
     add_evidence,
     get_checkpoint,
     get_default_session_factory,
     save_events,
     set_checkpoint,
 )
-from worldpulse.events.classifier import RuleBasedEventClassifier, get_classifier
-from worldpulse.events.deduplication import (
+from worldtune.events.classifier import RuleBasedEventClassifier, get_classifier
+from worldtune.events.deduplication import (
     apply_cluster_corroboration,
     build_cluster_evidence,
     cluster_events,
 )
-from worldpulse.ingestion.providers import registry
+from worldtune.ingestion.providers import registry
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live reachability check for WorldPulse's free data providers.
+"""Live reachability check for WorldTune's free data providers.
 
 **Run this on a machine with normal internet access.** It makes real
 network calls; the automated test suite deliberately does not (it drives
@@ -43,14 +43,14 @@ for _path in (_REPO_ROOT, os.path.join(_REPO_ROOT, "src")):
     if _path not in sys.path:
         sys.path.insert(0, _path)
 
-from worldpulse.ingestion.markets import (  # noqa: E402
+from worldtune.ingestion.markets import (  # noqa: E402
     BinancePublicMarketProvider,
     StooqMarketProvider,
 )
-from worldpulse.ingestion.providers.eonet import EONETProvider  # noqa: E402
-from worldpulse.ingestion.providers.gdacs import GDACSProvider  # noqa: E402
-from worldpulse.ingestion.providers.gdelt import GDELTProvider  # noqa: E402
-from worldpulse.ingestion.providers.usgs import USGSProvider  # noqa: E402
+from worldtune.ingestion.providers.eonet import EONETProvider  # noqa: E402
+from worldtune.ingestion.providers.gdacs import GDACSProvider  # noqa: E402
+from worldtune.ingestion.providers.gdelt import GDELTProvider  # noqa: E402
+from worldtune.ingestion.providers.usgs import USGSProvider  # noqa: E402
 
 NOW = datetime.now(timezone.utc)
 
@@ -186,7 +186,7 @@ def main() -> int:
         format="%(levelname)s %(name)s: %(message)s",
     )
 
-    print("WorldPulse live provider verification")
+    print("WorldTune live provider verification")
     print(f"UTC now: {NOW.isoformat()}")
     print("These are REAL network calls. If they fail behind a proxy or in a")
     print("sandboxed environment, that is a network-reachability result, not a")
@@ -206,7 +206,7 @@ def main() -> int:
         print(f"\n{len(failed)} required provider(s) FAILED: {', '.join(failed)}")
         print("Check outbound network access / proxy allowlist, then re-run.")
         return 1
-    print("\nAll required providers PASSED. WorldPulse can run in zero-cost mode.")
+    print("\nAll required providers PASSED. WorldTune can run in zero-cost mode.")
     return 0
 
 

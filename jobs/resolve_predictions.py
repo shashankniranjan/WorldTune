@@ -9,10 +9,10 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
-from worldpulse.config import settings
-from worldpulse.database.repository import get_default_session_factory
-from worldpulse.evaluation.outcome_resolver import resolve_predictions
-from worldpulse.ingestion.markets import SyntheticMarketDataProvider
+from worldtune.config import settings
+from worldtune.database.repository import get_default_session_factory
+from worldtune.evaluation.outcome_resolver import resolve_predictions
+from worldtune.ingestion.markets import SyntheticMarketDataProvider
 
 
 def run(now: datetime, seed: int | None = None) -> int:

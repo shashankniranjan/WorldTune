@@ -1,4 +1,4 @@
-# WorldPulse -- Low-Level Design
+# WorldTune -- Low-Level Design
 
 ## 1. The point-in-time causality contract
 
@@ -50,7 +50,7 @@ that lets a later day "go back" and revise an earlier day's prediction.
 | `id` | `str` | deterministic (uuid5 of the source item id), so re-classifying the same raw item is idempotent |
 | `source_id` | `str` | id of the raw news/intel item |
 | `occurred_at` | `datetime` | when the event happened (drives all causality checks) |
-| `ingested_at` | `datetime` | when WorldPulse saw it |
+| `ingested_at` | `datetime` | when WorldTune saw it |
 | `event_type` | `EventDomain` enum | one of 5 domains (see below) |
 | `event_subtype` | `str` | keyword-derived refinement, e.g. `missile_strike` |
 | `countries`, `entities`, `affected_channels` | `list[str]` | structured tags used for filtering/re-ranking |
@@ -102,7 +102,7 @@ consistently as UTC on both backends.
   time-series sources. `registry.py` reads `EVENT_PROVIDERS` (default
   `gdelt,usgs,eonet,gdacs` — all keyless), instantiates only providers
   whose `is_available()` is True, refuses paid providers while
-  `WORLDPULSE_MODE=free`, and logs every skip with its reason. Adapters:
+  `WORLDTUNE_MODE=free`, and logs every skip with its reason. Adapters:
   `gdelt.py` (DOC 2.0 API, one query per event domain), `usgs.py` (FDSN
   event query for history + summary feed for live; magnitude→severity with
   floors at M6/M7/M8), `eonet.py` (v3 category→subtype map), `gdacs.py`
@@ -147,7 +147,7 @@ consistently as UTC on both backends.
 - `classifier.py`: `RuleBasedEventClassifier` maps a source category hint
   to an `EventDomain`, refines `event_subtype` via headline keyword
   matching, and derives `potential_assets` from a per-domain static
-  table. Deterministic id via `uuid5(NAMESPACE_URL, "worldpulse-event:" +
+  table. Deterministic id via `uuid5(NAMESPACE_URL, "worldtune-event:" +
   source_id)`.
 - `deduplication.py`: union-find clustering. Two events merge into the
   same `event_cluster_id` iff `|occurred_at_a - occurred_at_b| <=

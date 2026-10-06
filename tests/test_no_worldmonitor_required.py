@@ -1,4 +1,4 @@
-"""THE critical test: WorldPulse works fully with WORLDMONITOR_API_KEY unset.
+"""THE critical test: WorldTune works fully with WORLDMONITOR_API_KEY unset.
 
 Before the provider refactor, World Monitor was the mandatory event
 source. This module is the regression guard for that no longer being true.
@@ -27,31 +27,31 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from tests import provider_fixtures as fx
-from worldpulse.config import settings
-from worldpulse.database.models import PredictionORM, WorldEventORM
-from worldpulse.database.repository import (
+from worldtune.config import settings
+from worldtune.database.models import PredictionORM, WorldEventORM
+from worldtune.database.repository import (
     add_evidence,
     get_events_as_of,
     save_bars,
     save_events,
 )
-from worldpulse.evaluation.outcome_resolver import resolve_predictions
-from worldpulse.evaluation.scoring import compute_scoreboard
-from worldpulse.events.classifier import RuleBasedEventClassifier, get_classifier
-from worldpulse.events.deduplication import (
+from worldtune.evaluation.outcome_resolver import resolve_predictions
+from worldtune.evaluation.scoring import compute_scoreboard
+from worldtune.events.classifier import RuleBasedEventClassifier, get_classifier
+from worldtune.events.deduplication import (
     apply_cluster_corroboration,
     build_cluster_evidence,
     cluster_events,
 )
-from worldpulse.ingestion.markets import SyntheticMarketDataProvider
-from worldpulse.ingestion.providers import registry
-from worldpulse.ingestion.providers.eonet import EONETProvider
-from worldpulse.ingestion.providers.gdacs import GDACSProvider
-from worldpulse.ingestion.providers.gdelt import GDELTProvider
-from worldpulse.ingestion.providers.usgs import USGSProvider
-from worldpulse.ingestion.providers.worldmonitor import WorldMonitorProvider
-from worldpulse.markets.instruments import all_symbols
-from worldpulse.prediction.predictor import create_predictions_for_event, prediction_result_to_orm
+from worldtune.ingestion.markets import SyntheticMarketDataProvider
+from worldtune.ingestion.providers import registry
+from worldtune.ingestion.providers.eonet import EONETProvider
+from worldtune.ingestion.providers.gdacs import GDACSProvider
+from worldtune.ingestion.providers.gdelt import GDELTProvider
+from worldtune.ingestion.providers.usgs import USGSProvider
+from worldtune.ingestion.providers.worldmonitor import WorldMonitorProvider
+from worldtune.markets.instruments import all_symbols
+from worldtune.prediction.predictor import create_predictions_for_event, prediction_result_to_orm
 
 OPTIONAL_KEYS = [
     "WORLDMONITOR_API_KEY",
@@ -81,7 +81,7 @@ def no_keys(monkeypatch):
     monkeypatch.setattr(settings, "groq_api_key", None)
     monkeypatch.setattr(settings, "openrouter_api_key", None)
     monkeypatch.setattr(settings, "event_providers", "gdelt,usgs,eonet,gdacs")
-    monkeypatch.setattr(settings, "worldpulse_mode", "free")
+    monkeypatch.setattr(settings, "worldtune_mode", "free")
     registry.reset_registry()
     yield
     registry.reset_registry()
@@ -179,10 +179,10 @@ def test_end_to_end_prediction_using_only_free_providers(no_keys, db_session, mo
         raise AssertionError("World Monitor code path was invoked in FREE mode")
 
     monkeypatch.setattr(
-        "worldpulse.ingestion.worldmonitor.WorldMonitorSDKClient.__init__", tripwire
+        "worldtune.ingestion.worldmonitor.WorldMonitorSDKClient.__init__", tripwire
     )
     monkeypatch.setattr(
-        "worldpulse.ingestion.providers.worldmonitor.WorldMonitorProvider._fetch", tripwire
+        "worldtune.ingestion.providers.worldmonitor.WorldMonitorProvider._fetch", tripwire
     )
 
     # --- 1. ingest from the free providers (HTTP mocked) ---
@@ -238,7 +238,7 @@ def test_end_to_end_prediction_using_only_free_providers(no_keys, db_session, mo
     # Analogue retrieval needs *past* events of the same kind. Free
     # providers only cover the requested window, so seed the history from
     # the deterministic offline source -- still zero-cost, still no key.
-    from worldpulse.ingestion.providers.worldmonitor import SyntheticEventProvider
+    from worldtune.ingestion.providers.worldmonitor import SyntheticEventProvider
 
     historical = SyntheticEventProvider(seed=11).fetch_events(
         history_start, fx.WINDOW_START - timedelta(days=1)
@@ -285,7 +285,7 @@ def test_end_to_end_prediction_using_only_free_providers(no_keys, db_session, mo
 def test_backfill_synthetic_path_still_works_without_any_keys(no_keys, tmp_path):
     """The offline demo entrypoint must not have regressed."""
     from jobs.backfill import run_backfill
-    from worldpulse.database import repository as repo
+    from worldtune.database import repository as repo
 
     summary = run_backfill(days=3, seed=42, db_path=str(tmp_path / "backfill.db"))
     assert summary["data_mode"] == "FREE"
@@ -302,11 +302,11 @@ def test_historical_backfill_mode_runs_on_free_providers(no_keys, monkeypatch, t
     gets coverage too -- with the providers' HTTP mocked, since the test
     suite makes no network calls.
     """
-    from worldpulse.ingestion.providers import registry as reg
+    from worldtune.ingestion.providers import registry as reg
     import jobs.backfill as backfill
 
     monkeypatch.setattr(
-        "worldpulse.ingestion.providers.registry.EVENT_PROVIDER_FACTORIES",
+        "worldtune.ingestion.providers.registry.EVENT_PROVIDER_FACTORIES",
         {
             "usgs": lambda: USGSProvider(client=fx.make_client(), min_magnitude=4.0),
             "gdelt": lambda: GDELTProvider(client=fx.make_client()),
@@ -323,7 +323,7 @@ def test_historical_backfill_mode_runs_on_free_providers(no_keys, monkeypatch, t
         )
     finally:
         reg.reset_registry()
-        from worldpulse.database import repository as repo
+        from worldtune.database import repository as repo
 
         repo.reset_default_session_factory()
 

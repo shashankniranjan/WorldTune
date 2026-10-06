@@ -1,4 +1,3 @@
-version: "3.9"
 
 # "Real" deployment topology. Local dev/tests use SQLite and run modules
 # directly (see README.md); this compose file documents/exercises the
@@ -6,20 +5,20 @@ version: "3.9"
 #
 # Runs at ZERO COST out of the box: `cp .env.example .env && docker compose up`
 # needs no API key. The worker polls the free keyless feeds selected by
-# EVENT_PROVIDERS (default gdelt,usgs,eonet,gdacs) and WORLDPULSE_MODE
+# EVENT_PROVIDERS (default gdelt,usgs,eonet,gdacs) and WORLDTUNE_MODE
 # defaults to `free`, which refuses every paid provider.
 services:
   postgres:
     image: ankane/pgvector:latest
     restart: unless-stopped
     environment:
-      POSTGRES_USER: worldpulse
-      POSTGRES_PASSWORD: worldpulse
-      POSTGRES_DB: worldpulse
+      POSTGRES_USER: worldtune
+      POSTGRES_PASSWORD: worldtune
+      POSTGRES_DB: worldtune
     ports:
       - "5432:5432"
     volumes:
-      - worldpulse_pgdata:/var/lib/postgresql/data
+      - worldtune_pgdata:/var/lib/postgresql/data
 
   api:
     build:
@@ -29,9 +28,9 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg2://worldpulse:worldpulse@postgres:5432/worldpulse
+      DATABASE_URL: postgresql+psycopg2://worldtune:worldtune@postgres:5432/worldtune
       # Zero-cost defaults; override in .env if you have optional free keys.
-      WORLDPULSE_MODE: ${WORLDPULSE_MODE:-free}
+      WORLDTUNE_MODE: ${WORLDTUNE_MODE:-free}
       EVENT_PROVIDERS: ${EVENT_PROVIDERS:-gdelt,usgs,eonet,gdacs}
       AI_CLASSIFIER: ${AI_CLASSIFIER:-rules}
     ports:
@@ -47,9 +46,9 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg2://worldpulse:worldpulse@postgres:5432/worldpulse
+      DATABASE_URL: postgresql+psycopg2://worldtune:worldtune@postgres:5432/worldtune
       # Zero-cost defaults; override in .env if you have optional free keys.
-      WORLDPULSE_MODE: ${WORLDPULSE_MODE:-free}
+      WORLDTUNE_MODE: ${WORLDTUNE_MODE:-free}
       EVENT_PROVIDERS: ${EVENT_PROVIDERS:-gdelt,usgs,eonet,gdacs}
       AI_CLASSIFIER: ${AI_CLASSIFIER:-rules}
     ports:
@@ -61,13 +60,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: python -m worldpulse.ingestion.scheduler
+    command: python -m worldtune.ingestion.scheduler
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg2://worldpulse:worldpulse@postgres:5432/worldpulse
+      DATABASE_URL: postgresql+psycopg2://worldtune:worldtune@postgres:5432/worldtune
       # Zero-cost defaults; override in .env if you have optional free keys.
-      WORLDPULSE_MODE: ${WORLDPULSE_MODE:-free}
+      WORLDTUNE_MODE: ${WORLDTUNE_MODE:-free}
       EVENT_PROVIDERS: ${EVENT_PROVIDERS:-gdelt,usgs,eonet,gdacs}
       AI_CLASSIFIER: ${AI_CLASSIFIER:-rules}
     depends_on:
@@ -76,7 +75,7 @@ services:
   # --- WorldTune -----------------------------------------------------------
   # A separate product sharing this repo and this Postgres instance, on its own
   # database (worldtune) so the two schemas never collide. It imports nothing
-  # from worldpulse.* and can be started on its own:
+  # from worldtune.* and can be started on its own:
   #     docker compose up worldtune-api
   #
   # Runs at ZERO COST with no key: DEMO_MODE defaults to true, which selects
@@ -89,7 +88,7 @@ services:
     environment:
       # pgvector is available on this image; see app/models/base.py for the
       # Vector(128) column the embeddings would use on Postgres.
-      DATABASE_URL: postgresql+psycopg2://worldpulse:worldpulse@postgres:5432/worldtune
+      DATABASE_URL: postgresql+psycopg2://worldtune:worldtune@postgres:5432/worldtune
       DEMO_MODE: ${WORLDTUNE_DEMO_MODE:-true}
       AUTO_SEED: ${WORLDTUNE_AUTO_SEED:-true}
       # All optional. Unset => that provider reports available=false and is
@@ -98,27 +97,31 @@ services:
       ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      # Same variable start-worldtune.sh writes to .env; compose reads .env too.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      # World Shifts artifacts are read from disk, not baked into the image.
+      WORLDTUNE_CORS_ORIGINS: http://localhost:${WORLDTUNE_WEB_PORT:-3000},http://127.0.0.1:${WORLDTUNE_WEB_PORT:-3000}
+      WORLD_TUNE_SHIFTS_PATH: /data/world_shifts/gold_world_shifts.parquet
+      WORLD_TUNE_INTELLIGENCE_PATH: /data/world_shifts/shift_intelligence.json
+    volumes:
+      - ./data/processed/worldtune/world_shifts:/data/world_shifts:ro
     ports:
       - "8100:8000"
     depends_on:
       - postgres
 
-  # The WorldTune Next.js frontend. NEXT_PUBLIC_API_BASE_URL is what the
-  # *browser* calls, so it points at the host-published API port (8100), not at
-  # the compose-internal service name. Local dev without compose runs the API on
-  # 8090 (see worldtune/frontend/.env.example).
+  # The WorldTune Next.js UI (./frontend). The browser calls the API on the
+  # host-published port 8100, so that URL is baked in at build time.
+  #     docker compose up worldtune-web      # also starts worldtune-api + postgres
   worldtune-web:
     build:
-      context: ./worldtune/frontend
-      dockerfile: Dockerfile
+      context: ./frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: ${WORLDTUNE_API_BASE_URL:-http://localhost:8100}
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: ${WORLDTUNE_API_BASE_URL:-http://localhost:8100}
+        NEXT_PUBLIC_WORLDTUNE_API_URL: ${WORLDTUNE_API_BASE_URL:-http://localhost:8100}
     ports:
-      - "3000:3000"
+      - "${WORLDTUNE_WEB_PORT:-3000}:3000"
     depends_on:
       - worldtune-api
 
 volumes:
-  worldpulse_pgdata:
+  worldtune_pgdata:

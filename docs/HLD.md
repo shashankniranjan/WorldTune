@@ -1,8 +1,8 @@
-# WorldPulse -- High-Level Design
+# WorldTune -- High-Level Design
 
 ## 1. What this system does
 
-WorldPulse watches a stream of real-world events (conflict, military
+WorldTune watches a stream of real-world events (conflict, military
 activity, energy disruption, economic/policy announcements, natural
 disasters), turns each into a structured record, finds historically
 similar past events, looks at what actually happened to a basket of
@@ -22,7 +22,7 @@ prototype. See `docs/LLD.md` for concrete schemas and algorithms, and
 
 ## 2. The four responsibilities, and why they're separated
 
-WorldPulse's code is organized around four responsibilities that are
+WorldTune's code is organized around four responsibilities that are
 *intentionally* kept in separate packages, because they have different
 failure modes, different testing strategies, and (in a real deployment)
 different iteration speeds:
@@ -79,7 +79,7 @@ flowchart LR
         MKT[Market data\n(Binance/Stooq free, or synthetic)]
     end
 
-    subgraph WorldPulse["WorldPulse"]
+    subgraph WorldTune["WorldTune"]
         ING[ingestion/]
         EVT[events/\nclassify + dedup]
         SIM[similarity/\nembed + retrieve + rank]
@@ -93,7 +93,7 @@ flowchart LR
 
     FREE --> REG[ingestion/providers/registry.py]
     FREEKEY -. "skipped if key unset" .-> REG
-    WM -. "skipped unless WORLDPULSE_MODE=paid" .-> REG
+    WM -. "skipped unless WORLDTUNE_MODE=paid" .-> REG
     REG --> ING
     CTX -. "ContextDataProvider\n(feature layer only)" .-> PRED
     MKT -. "SyntheticMarketDataProvider\n(default, offline)" .-> ING
@@ -115,7 +115,7 @@ There is no mandatory event source. Every feed implements one port,
 - `EVENT_PROVIDERS` (default `gdelt,usgs,eonet,gdacs`) selects them;
 - a provider whose credential is missing reports `is_available() == False`
   and is **skipped with a logged reason**, never raising;
-- `WORLDPULSE_MODE=free` (the default) additionally refuses any paid
+- `WORLDTUNE_MODE=free` (the default) additionally refuses any paid
   provider even when explicitly listed;
 - `GET /health/providers` reports each provider as HEALTHY / DEGRADED /
   **DISABLED**, where DISABLED (missing optional key, or simply not
@@ -123,7 +123,7 @@ There is no mandatory event source. Every feed implements one port,
 
 World Monitor is one optional, paid provider among many, wrapped as
 `WorldMonitorProvider`. It is not in the default provider set, and
-WorldPulse is fully functional with `WORLDMONITOR_API_KEY` unset — the
+WorldTune is fully functional with `WORLDMONITOR_API_KEY` unset — the
 regression guard is `tests/test_no_worldmonitor_required.py`. See
 `docs/data-sources.md` for every provider's cost, historical depth, rate
 limits and failure behaviour.
