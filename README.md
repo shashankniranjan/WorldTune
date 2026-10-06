@@ -17,21 +17,80 @@ endpoints, and event classification from a deterministic rule engine that
 needs no LLM. Everything below the "FREE QUICK START" line works with an
 empty `.env`.
 
-## Run the whole platform (one command)
+## Getting started (new teammate)
+
+### Prerequisites (one-time, if missing)
+
+- **Git**
+- **Python 3.10+** (macOS: `brew install python@3.12`)
+- **Node.js 18+** (macOS: `brew install node`)
+- An **OpenRouter API key** from https://openrouter.ai/keys (optional)
+
+Nothing else is needed: no pnpm, no virtualenv, no `.env` file.
+
+### Run it
 
 ```bash
-./start-worldtune.sh     # first run: sets up Python/Node deps and asks for your OpenRouter key
-./stop-worldtune.sh      # stops backend + frontend
+git clone https://github.com/shashankniranjan/WorldPulse.git
+cd WorldPulse
+./start-worldtune.sh
 ```
 
-Requirements: Python 3.10+ and Node.js 18+. Nothing else needs installing.
-The first run asks for an OpenRouter API key (press Enter to skip; briefings then use the
-deterministic fallback). The key is saved to `./.env` and to your shell profile as
-`OPENROUTER_API_KEY`; use `./start-worldtune.sh --set-key` to change it.
-App: http://localhost:3000 - API: http://localhost:8090 (`API_PORT` / `WEB_PORT` override).
+On the first run the script:
 
-Layout: `frontend/` (Next.js UI), `worldtune/backend/` (FastAPI World Shifts API),
-`src/worldtune/` + `jobs/` + `apps/` (event-impact prediction engine, formerly WorldPulse).
+1. creates `.venv` and installs the backend dependencies,
+2. installs the frontend dependencies,
+3. asks for your OpenRouter key (input is hidden; press Enter to skip, and briefings
+   fall back to deterministic ones instead of AI-written ones),
+4. saves the key to `./.env` and to your shell profile as `OPENROUTER_API_KEY`,
+5. starts the backend and frontend and waits until both respond.
+
+The first run takes a few minutes for installs; later runs take seconds and do not ask
+for the key again.
+
+### Use it
+
+- App: http://localhost:3000
+- API: http://localhost:8090 (docs at `/docs`)
+- Logs: `.worldtune-run/backend.log`, `.worldtune-run/frontend.log`
+
+### Stop it
+
+```bash
+./stop-worldtune.sh
+```
+
+### Options
+
+| Need | Command |
+|---|---|
+| Change or add the OpenRouter key | `./start-worldtune.sh --set-key` |
+| Never prompt (CI) | `./start-worldtune.sh --no-prompt` |
+| Use other ports | `API_PORT=8091 WEB_PORT=3001 ./start-worldtune.sh` |
+
+### Alternative: Docker
+
+```bash
+docker compose up --build worldtune-web
+```
+
+App at http://localhost:3000, API at http://localhost:8100. Use it instead of the script,
+not alongside it (both need port 3000). Set `WORLDTUNE_WEB_PORT` to use another port.
+
+### Troubleshooting
+
+- **Port already in use:** run `./stop-worldtune.sh`, or choose other ports as above.
+- **"Python 3.10+ is required" / "Node.js 18+ is required":** install it and re-run.
+- **Anything else:** check the two log files above.
+
+The key lives in `.env` and your shell profile; never commit or share either file
+(`.env` is already gitignored).
+
+### Repository layout
+
+- `frontend/`: Next.js UI
+- `worldtune/backend/`: FastAPI World Shifts API
+- `src/worldtune/`, `jobs/`, `apps/`: event-impact prediction engine (formerly WorldPulse)
 
 ---
 
