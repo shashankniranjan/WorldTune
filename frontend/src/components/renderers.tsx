@@ -62,6 +62,10 @@ export function OverviewRenderer({ data, onEvidence }: { data: WorldShiftSnapsho
   const o = data.shift.overview;
   const leadImage = [...data.evidence].reverse().find((item) => item.imageUrl);
   return <article className="editorial-story">
+    {leadImage?.imageUrl && <figure className="briefing-lead-image"><img src={leadImage.imageUrl} alt={leadImage.title} loading="lazy" referrerPolicy="no-referrer" />{/* An illustration carries its own caption explaining that it depicts the
+      subject rather than a reported event; a publisher image keeps the
+      attribution line the reference shift has always shown. */}
+    <figcaption>{leadImage.type === "illustration" ? `${leadImage.summary ?? leadImage.title} · ${leadImage.source}` : `Latest available source image · ${leadImage.source}`}</figcaption></figure>}
     {o.contextBrief && <section className="briefing-primer">
       <p className="news-section-label">World Shift · the consolidated brief</p>
       <div className="briefing-primer-grid">
@@ -70,10 +74,6 @@ export function OverviewRenderer({ data, onEvidence }: { data: WorldShiftSnapsho
         <div><span>03</span><h2>Latest</h2><p>{o.contextBrief.latest}</p><EvidenceButton ids={o.contextBrief.latestEvidenceIds ?? []} onEvidence={onEvidence} /></div>
       </div>
     </section>}
-    {leadImage?.imageUrl && <figure className="briefing-lead-image"><img src={leadImage.imageUrl} alt={leadImage.title} loading="lazy" referrerPolicy="no-referrer" />{/* An illustration carries its own caption explaining that it depicts the
-      subject rather than a reported event; a publisher image keeps the
-      attribution line the reference shift has always shown. */}
-    <figcaption>{leadImage.type === "illustration" ? `${leadImage.summary ?? leadImage.title} · ${leadImage.source}` : `Latest available source image · ${leadImage.source}`}</figcaption></figure>}
     {Boolean(o.factsAndFigures?.length) && <section className="briefing-facts">{o.factsAndFigures!.map((fact) => <button key={fact.value + fact.label} onClick={() => onEvidence(fact.evidenceIds)}><strong>{fact.value}</strong><span>{fact.label}</span><small>{fact.context}</small></button>)}</section>}
     <section className="editorial-lead"><p className="news-section-label">The story in brief</p><EditorialPoints points={o.whatsHappening ?? []} fallback={o.whatHappened} onEvidence={onEvidence} /></section>
     {Boolean(o.timeline?.length) && <section className="briefing-timeline"><p className="news-section-label">{o.timelineKicker ?? "How the escalation unfolded"}</p><h2>{o.timelineHeading ?? "A dated view of what changed"}</h2><div>{o.timeline!.map((event) => <article key={event.date + event.title}><time>{event.date}</time><span data-status={event.status}>{event.status}</span><h3>{event.title}</h3><p>{event.summary}</p><EvidenceButton ids={event.evidenceIds} onEvidence={onEvidence} /></article>)}</div></section>}
