@@ -8,8 +8,8 @@
 
 ![WorldTune landing page](docs/assets/landing.png)
 
-WorldTune is an open-source world-intelligence platform. It reads open news and event
-feeds (GDELT, USGS, NASA EONET, GDACS and more), clusters them into **World Shifts** such
+WorldTune is an open-source world-intelligence platform. It reads global news coverage
+from [GDELT](https://www.gdeltproject.org/), clusters it into **World Shifts** such
 as *Armed Conflict and Military Escalation*, *AI Infrastructure* or *Inflation and Rates*,
 and turns each shift into an evidence-first briefing tailored to a persona.
 
@@ -22,7 +22,7 @@ and turns each shift into an evidence-first briefing tailored to a persona.
 - **Persona aware.** The same shift reads differently for different readers (news,
   markets, work, skills).
 - **Connection explorer.** See how shifts, entities and impact channels relate.
-- **Event-impact prediction engine.** For each event, finds historically similar events,
+- **Event-impact prediction engine (experimental).** For each event, finds historically similar events,
   checks what ~18 financial instruments did afterwards, and produces
   direction / probability / expected-return / confidence predictions over 1h to 24h,
   scored against simple baselines.
@@ -32,11 +32,40 @@ and turns each shift into an evidence-first briefing tailored to a persona.
 
 ## How it works
 
-1. **Ingest** open public feeds (news, earthquakes, wildfires, disasters, markets).
-2. **Classify and deduplicate** events with a deterministic rule engine.
+1. **Ingest** global news articles from GDELT (bulk GKG files plus the live DOC 2.0 API).
+2. **Classify and deduplicate** articles with a deterministic rule engine.
 3. **Cluster** articles into World Shifts and build a daily snapshot with evidence.
 4. **Interpret** each shift per persona (optionally with an LLM through OpenRouter).
 5. **Serve** it through a FastAPI backend and a Next.js frontend.
+
+## Data sources
+
+**Today, WorldTune's World Shifts and briefings are built from GDELT only.** GDELT is
+free, needs no key, and covers news worldwide. Publisher pages are fetched only to fill
+in headlines and images for GDELT articles.
+
+## Roadmap / future work
+
+The codebase already has adapters for other sources, but they are not yet wired into the
+World Shifts pipeline or the UI. Bringing them in is planned future work, and a good
+place to contribute:
+
+| Area | Sources | Status |
+|---|---|---|
+| Natural hazards | USGS earthquakes, NASA EONET, GDACS, NASA FIRMS | Adapters exist in the prediction engine |
+| Conflict and protest | ACLED | Adapter exists, needs a free key |
+| Macro and energy | FRED, EIA | Adapters exist, needs a free key |
+| Markets | Stooq, Binance, CoinGecko | Adapters exist |
+| Technology signals | GitHub, Hacker News | Adapters exist |
+| Jobs and skills | Adzuna, RemoteOK | Adapters exist |
+| Other news | Google News | Adapter exists |
+| Official statistics | data.gov.in, MoSPI | Download scripts only |
+
+Other planned work:
+
+- Feed prediction-engine output (market impact) into World Shift briefings.
+- More personas, and user-defined personas.
+- Scheduled daily snapshots and hosted deployment.
 
 ## Getting started
 
@@ -116,7 +145,14 @@ The key lives in `.env` and your shell profile; never commit or share either fil
 ---
 
 
-## FREE QUICK START
+## Prediction engine (experimental)
+
+> Everything below documents the standalone event-impact prediction engine in
+> `src/worldtune/`, `jobs/` and `apps/`. It is separate from the World Shifts product
+> above and is not yet connected to the UI. Its multi-source event providers are the
+> starting point for the [roadmap](#roadmap--future-work).
+
+### FREE QUICK START
 
 No account, no key, no card. Four commands:
 
