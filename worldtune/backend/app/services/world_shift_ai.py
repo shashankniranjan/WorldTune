@@ -54,11 +54,44 @@ showing each step of the chain in order, MUST include "derivedFrom" pointing at 
 entity/claim/event IDs it started from, and MUST NOT claim certainty, guarantee an outcome, or give
 an investment recommendation ("could benefit" and "may be exposed to", not "will rise" or "buy").
 Prefer empty arrays when evidence is insufficient. Return strict JSON matching the supplied schema
-and nothing else."""
+and nothing else.
+
+ID RULES: every "evidenceIds" array must contain ONLY values copied exactly from the "evidenceId" field of the supplied
+evidence items (they look like ev_1a2b3c...). Event, claim and entity ids (like "topic:ev_...", "claim_...") are NOT evidence ids;
+never put them in evidenceIds. Use claimIds for claims and derivedFrom for grounded entity/claim/event ids.
+
+WRITING STYLE (applies to every text field you write):
+- Write for a reader with no background in the topic. Plain, everyday words. Short sentences (aim for under 20 words), active voice.
+- Say the point first. Give names, dates and numbers from the evidence; skip scene-setting and filler.
+- Explain any technical term or acronym the first time you use it, in a few words.
+- Avoid: amid, underscores, poised, landscape, dynamics, notably, significant, pivotal, unprecedented,
+  leverage, multifaceted, in light of, it is worth noting. Use "said" not "stated", "use" not "utilise".
+- No hedging boilerplate. Mark uncertainty once, briefly ("reported", "unconfirmed", "may").
+- Never repeat the same fact in two fields. Never pad to reach a length."""
+
+CARD_STYLE = (
+    "Cards: write the four overview cards, each a headline plus a body. The headline is one complete, standalone claim "
+    "in plain words, max 70 characters, no trailing comma clause. The body is at most 2 short sentences, max 220 characters, "
+    "and answers ONLY that card's question, using only facts from its own evidenceIds. Do not repeat one card's content in "
+    "another. Each card lists in evidenceIds the evidence item ids (ev_...) that support it. "
+)
+
+PERSONA_CARD = (
+    "Also write storyCard with key 'you': for {who}, say in plain words what this shift concretely changes for them. "
+    "Headline = the single most relevant effect (max 70 characters). Body = at most 2 short sentences (max 220 characters) "
+    "giving the one thing they should understand or watch; no trade or hiring advice. Cite only evidenceIds that support it. "
+    "If the evidence does not support a clear effect for this reader, leave storyCard null rather than stretching."
+)
 
 STAGE_INSTRUCTIONS = {
     "semantic_extraction": "Extract events, claims, grounded entities, and bounded relationships. Every object must cite evidenceIds.",
-    "world_shift_synthesis": ("Create a detailed, persona-neutral news briefing, not an analytics dashboard. In contextBrief, explain in plain "
+    "world_shift_synthesis": ("Create a clear, persona-neutral news briefing in plain language, not an analytics dashboard. Keep every field short and to the point. "
+        + CARD_STYLE +
+        "In storyCards write exactly three cards: key 'happened' = what changed most recently (the latest development, with who/what/when); "
+        "key 'why' = what set it off or keeps it going (the main cause, not a restatement of what happened); "
+        "key 'next' = the most likely next development and roughly when, worded as a possibility ('may', 'could'), never certain. "
+        "The 'you' card is written elsewhere, do not write it here. "
+        "In contextBrief, explain in plain "
         "language what the shift is, how the current story started, and the latest development; cite each paragraph with its dedicated evidence IDs. "
         "Build a chronological timeline from dated source material, name the principal actors and attribute their actions or stated positions, and "
         "extract only source-supported factsAndFigures. Distinguish confirmed, reported, claimed, and disputed material. If the supplied evidence does "
@@ -70,13 +103,15 @@ STAGE_INSTRUCTIONS = {
         "sensitivity. Separate direct, supply-chain, and second-order exposure; include countries and near_term and/or long_term horizons. "
         "Include India-specific companies when a defensible transmission path exists, alongside relevant global companies. Explain the "
         "earnings, cost, order, commodity, policy, or valuation mechanism and what would verify it. Never state that a share will rise or fall. Every exposureMap "
-        "item MUST be evidenceClass 'reasoned' with a 'reasoning' chain and a 'verificationHint' telling the reader what to check."),
+        "item MUST be evidenceClass 'reasoned' with a 'reasoning' chain and a 'verificationHint' telling the reader what to check. "
+        "Keep every summary short and plain. " + PERSONA_CARD.format(who="a person who follows markets and invests")),
     "persona_tech": ("Derive a bounded technology/career interpretation from the SAME semantic layer. Populate directImpacts, "
         "impactChain, secondOrderEffects, risks, opportunities, watchItems, and skill/technology/consulting pathways. Do not claim "
         "measured hiring demand. Populate exposureMap with SPECIFIC global and India-based technology companies and the precise technical "
         "opportunity: capability gap, likely advancement, countries, and near_term and/or long_term horizon. Focus on engineering problems "
         "such as autonomy, sensing, resilient communications, cyber defence, infrastructure, manufacturing, or decision support—not share-price "
-        "direction. A company capability is not proof of a contract. Each item must be evidenceClass 'reasoned' with a reasoning chain and verificationHint."),
+        "direction. A company capability is not proof of a contract. Each item must be evidenceClass 'reasoned' with a reasoning chain and verificationHint. "
+        "Keep every summary short and plain. " + PERSONA_CARD.format(who="a software or technology professional planning their career")),
 }
 
 
@@ -104,13 +139,89 @@ def _safe_text(value: str, corpus: str, *, tier: str = "observed") -> bool:
     return not SOFT_CAUSAL.search(value) and all(number.lower() in corpus for number in NUMBER.findall(value))
 
 
+CARD_HEADLINE_MAX = 90
+CARD_BODY_MAX = 280
+
+
+def _card_ok(card, corpus: str, evidence_ids: set[str]) -> bool:
+    """A card must cite real evidence, stay short, and avoid advice language.
+
+    Numbers must come from the evidence on every card except 'next', where the
+    horizon ("in 7 days") is the model's own conditional wording.
+    """
+    text = f"{card.headline} {card.body}"
+    if not card.headline.strip() or not card.body.strip():
+        return False
+    if len(card.headline) > CARD_HEADLINE_MAX or len(card.body) > CARD_BODY_MAX:
+        return False
+    if not card.evidence_ids or not set(card.evidence_ids) <= evidence_ids:
+        return False
+    if HARD_FORBIDDEN.search(text):
+        return False
+    if card.key != "next" and not all(n.lower() in corpus for n in NUMBER.findall(text)):
+        return False
+    return True
+
+
+def _cards(items, corpus: str, evidence_ids: set[str], allowed: set[str]) -> list:
+    seen: set[str] = set()
+    out = []
+    for card in items:
+        if card.key in allowed and card.key not in seen and _card_ok(card, corpus, evidence_ids):
+            seen.add(card.key)
+            out.append(card)
+    return out
+
+
 def _is_reasoned(item) -> bool:
     return getattr(item, "evidence_class", None) == "reasoned"
+
+
+_EVIDENCE_ID_KEYS = {"evidenceIds", "whatItIsEvidenceIds", "howItStartedEvidenceIds", "latestEvidenceIds",
+                      "counterEvidenceIds", "opposingEvidenceIds"}
+
+
+def repair_evidence_ids(output: T, evidence_ids: set[str], semantic: SemanticExtraction | None) -> T:
+    """Swap an event/claim id cited as evidence for that object's own evidence ids.
+
+    Models sometimes cite "topic:ev_x" (an event id) where an evidence id
+    belongs. The event's evidenceIds are exactly the sources it was extracted
+    from, so the swap keeps the citation grounded. Unknown ids are left alone
+    and are rejected by the normal checks.
+    """
+    if semantic is None or not isinstance(output, (WorldShiftSynthesis, PersonaSynthesis)):
+        return output
+    sources = {item.event_id: item.evidence_ids for item in semantic.events}
+    sources.update({item.claim_id: item.evidence_ids for item in semantic.claims})
+    changed = 0
+
+    def fix(ids: list) -> list:
+        nonlocal changed
+        out: list[str] = []
+        for ref in ids:
+            for resolved in ([ref] if ref in evidence_ids else sources.get(ref, [ref])):
+                if resolved not in out:
+                    out.append(resolved)
+        changed += out != ids
+        return out
+
+    def walk(value):
+        if isinstance(value, dict):
+            return {k: fix(v) if k in _EVIDENCE_ID_KEYS and isinstance(v, list) else walk(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [walk(v) for v in value]
+        return value
+
+    repaired = type(output).model_validate(walk(output.model_dump(by_alias=True)))
+    if changed:
+        logger.info("repaired %s citation list(s) that used event/claim ids as evidence ids", changed)
+    return repaired
 
 
 def filter_invalid_objects(output: T, evidence: list[dict], semantic: SemanticExtraction | None = None) -> tuple[T, int]:
     """Reject invalid leaf objects while preserving a schema-valid bounded result."""
     evidence_ids = {item["evidenceId"] for item in evidence}
+    output = repair_evidence_ids(output, evidence_ids, semantic)
     corpus = json.dumps({"evidence": evidence, "semantic": semantic.model_dump(by_alias=True) if semantic else None}, ensure_ascii=False).lower()
     removed = 0
     if isinstance(output, SemanticExtraction):
@@ -179,7 +290,8 @@ def filter_invalid_objects(output: T, evidence: list[dict], semantic: SemanticEx
             "timeline": cited(output.timeline, lambda item: item.title + " " + item.summary),
             "actors": cited(output.actors, lambda item: item.name + " " + item.role + " " + item.position),
             "facts_and_figures": cited(output.facts_and_figures, lambda item: item.value + " " + item.label + " " + item.context),
-        }), removed
+            "story_cards": (cards := _cards(output.story_cards, corpus, evidence_ids, {"happened", "why", "next"})),
+        }), removed + len(output.story_cards) - len(cards)
     if isinstance(output, PersonaSynthesis):
         claim_ids = {item.claim_id for item in semantic.claims} if semantic else set()
         entity_ids = {item.entity_id for item in semantic.entities} if semantic else set()
@@ -191,7 +303,10 @@ def filter_invalid_objects(output: T, evidence: list[dict], semantic: SemanticEx
             for item in items:
                 if not (item.evidence_ids and set(item.evidence_ids) <= evidence_ids
                         and set(item.claim_ids) <= claim_ids
-                        and _safe_text(item.title + " " + item.summary, corpus, tier=item.evidence_class)):
+                        # Same fields the final grounding validator checks. Filtering them here
+                        # drops one bad item instead of failing the whole persona stage.
+                        and _safe_text(" ".join([item.title, item.summary, item.mechanism or "", item.verification_hint or ""]),
+                                       corpus, tier=item.evidence_class)):
                     removed += 1
                     continue
                 # "reasoned" items are exempt from claimIds-must-be-nonempty in
@@ -240,7 +355,9 @@ def filter_invalid_objects(output: T, evidence: list[dict], semantic: SemanticEx
             "opportunities": impacts(output.opportunities), "watch_items": impacts(output.watch_items),
             "domain_groups": groups,
             "exposure_map": exposure_map,
-        }), removed
+            "story_card": (card := output.story_card if output.story_card and output.story_card.key == "you"
+                           and _card_ok(output.story_card, corpus, evidence_ids) else None),
+        }), removed + (1 if output.story_card and card is None else 0)
     return output, 0
 
 
@@ -424,8 +541,11 @@ def _stage_output_summary(result: BaseModel) -> dict:
 
 
 class WorldShiftGenerationService:
-    def __init__(self, client: OpenRouterStructuredClient | None = None):
+    def __init__(self, client: OpenRouterStructuredClient | None = None, bypass_cache: bool = False):
         self.client = client or OpenRouterStructuredClient()
+        # Custom per-shift refresh: ignore cached generations so an edited
+        # prompt (same version string) is actually re-run.
+        self.bypass_cache = bypass_cache
         self.attempted = 0
         self.reused = 0
         self.validation_failures = 0
@@ -440,7 +560,7 @@ class WorldShiftGenerationService:
             "input": input_digest, "stage": stage, "persona": persona, "model": settings.llm_model,
             "prompt": settings.world_shift_prompt_version, "schema": settings.world_shift_schema_version,
         })
-        cached = session.get(AIGenerationORM, cache_key)
+        cached = None if self.bypass_cache else session.get(AIGenerationORM, cache_key)
         if cached:
             result = schema.model_validate(cached.output)
             validate_grounding(result, evidence, semantic=semantic, grounding_input=payload)
@@ -516,7 +636,7 @@ class WorldShiftGenerationService:
                 }
         if last_error is not None or result is None:
             raise last_error or IntelligenceValidationError("empty generation result")
-        session.add(AIGenerationORM(
+        session.merge(AIGenerationORM(
             cache_key=cache_key, shift_id=shift_id, stage=stage, persona=persona,
             model=settings.llm_model, prompt_version=settings.world_shift_prompt_version,
             schema_version=settings.world_shift_schema_version, input_digest=input_digest,

@@ -383,3 +383,52 @@ def test_filter_invalid_objects_drops_ungrounded_exposure_but_keeps_valid_one():
     filtered, removed = filter_invalid_objects(persona, EVIDENCE, semantic)
     assert [item.id for item in filtered.exposure_map] == ["exp_good"]
     assert removed == 2
+
+
+def test_bypass_cache_reruns_generation_and_overwrites_cache(session):
+    class FakeClient:
+        calls = 0
+        def generate(self, **kwargs):
+            self.calls += 1
+            return kwargs["schema"].model_validate(semantic_payload())
+    fake = FakeClient()
+    WorldShiftGenerationService(fake).extract(session, shift_id="alpha", evidence=EVIDENCE, metrics={}, run_id="run_a")
+    again = WorldShiftGenerationService(fake, bypass_cache=True)
+    again.extract(session, shift_id="alpha", evidence=EVIDENCE, metrics={}, run_id="run_b")
+    assert fake.calls == 2 and again.reused == 0
+    assert session.scalar(select(func.count()).select_from(AIGenerationORM)) == 1
+
+
+def test_carry_over_copies_other_shifts_with_new_snapshot_id(session):
+    from app.schemas.world_shift import SnapshotMeta
+    keep = _snapshot("old", "ACTIVE"); keep.shift_id = "keep-me"; keep.payload = {"snapshotId": "old", "x": 1}
+    redo = _snapshot("old", "ACTIVE"); redo.shift_id = "redo-me"
+    session.add_all([keep, redo]); session.commit()
+    meta = SnapshotMeta(snapshotId="new", generatedAt="2026-01-01T00:00:00+00:00", validUntil="2026-01-02T00:00:00+00:00")
+    rows = refresh_module._carry_over_active(session, "new", "redo-me", meta)
+    assert [r.shift_id for r in rows] == ["keep-me"]
+    assert rows[0].snapshot_id == "new" and rows[0].lifecycle == "BUILDING"
+    assert rows[0].payload == {"snapshotId": "new", "x": 1}
+
+
+def test_single_shift_refresh_endpoint_rejects_unknown_shift(client, monkeypatch):
+    monkeypatch.setattr(refresh_module._executor, "submit", lambda *args, **kwargs: None)
+    assert client.post("/world-shifts/does-not-exist/refresh").status_code == 404
+
+
+def test_current_refresh_reports_active_single_shift_run(client, monkeypatch):
+    monkeypatch.setattr(refresh_module._executor, "submit", lambda *args, **kwargs: None)
+    assert client.get("/world-shifts/refresh/current").json() is None
+    run = refresh_module.refresh_service.request_refresh("semiconductors")
+    body = client.get("/world-shifts/refresh/current").json()
+    assert body["runId"] == run.run_id and body["shiftId"] == "semiconductors" and body["status"] == "queued"
+
+
+def test_init_db_adds_missing_shift_id_column(tmp_path):
+    from sqlalchemy import create_engine, inspect, text
+    from app.db import _add_missing_columns
+    engine = create_engine(f"sqlite:///{tmp_path}/old.db")
+    with engine.begin() as c:
+        c.execute(text("CREATE TABLE world_shift_refresh_runs (run_id VARCHAR PRIMARY KEY)"))
+    _add_missing_columns(engine); _add_missing_columns(engine)  # idempotent
+    assert "shift_id" in {col["name"] for col in inspect(engine).get_columns("world_shift_refresh_runs")}

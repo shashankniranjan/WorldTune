@@ -113,6 +113,7 @@ class WorldShiftRefreshRunORM(Base):
     total: Mapped[int] = mapped_column(Integer, default=10)
     current_snapshot_id: Mapped[str | None] = mapped_column(String, nullable=True)
     new_snapshot_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    shift_id: Mapped[str | None] = mapped_column(String, nullable=True)  # set for a custom single-shift refresh
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     window_start: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     window_end: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)

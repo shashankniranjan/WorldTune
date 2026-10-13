@@ -66,11 +66,20 @@ def fail_orphaned_refresh_runs() -> int:
         return len(runs)
 
 
+_GDELT_REQUEST_SPACING_SECONDS = 5.0
+
+
 def _live_gdelt_rows(base_rows: tuple[dict, ...]) -> tuple[dict, ...]:
-    """Add recent, shift-matched GDELT articles without relabeling old evidence."""
+    """Add recent, shift-matched GDELT articles without relabeling old evidence.
+
+    GDELT's free DOC 2.0 API rate-limits per IP; firing one query per shift
+    back-to-back used to draw HTTP 429 on nearly every request. Spacing
+    requests out keeps each call under that limit instead of racing it.
+    """
     since = datetime.now(timezone.utc) - timedelta(minutes=30)
     provider = GDELTNewsProvider()
     updated: list[dict] = []
+    first = True
     for original in base_rows:
         row = dict(original)
         topic = str(row.get("topic", ""))
@@ -80,6 +89,9 @@ def _live_gdelt_rows(base_rows: tuple[dict, ...]) -> tuple[dict, ...]:
             updated.append(row)
             continue
         query = "(" + " OR ".join(f'"{token}"' for token in tokens[:6]) + ") sourcelang:english"
+        if not first:
+            time.sleep(_GDELT_REQUEST_SPACING_SECONDS)
+        first = False
         try:
             events = provider.fetch_news(query=query, since=since, limit=25)
         except Exception:
@@ -404,7 +416,7 @@ def _apply_common_synthesis(base: WorldShiftSnapshot, common) -> None:
         whyItMattersPoints=common.why_it_matters, keyDevelopments=common.key_developments,
         watchNext=common.watch_next, drivers=common.drivers, contradictions=common.contradictions,
         contextBrief=common.context_brief, timeline=common.timeline, actors=common.actors,
-        factsAndFigures=common.facts_and_figures,
+        factsAndFigures=common.facts_and_figures, storyCards=common.story_cards,
     )
 
 
@@ -429,7 +441,7 @@ def _snapshot_payload(row: dict, rows: list[dict], persona: str, meta: SnapshotM
         summary=persona_view.summary, directImpacts=persona_view.direct_impacts,
         impactChain=persona_view.impact_chain, secondOrderEffects=persona_view.second_order_effects, opportunities=persona_view.opportunities,
         risks=persona_view.risks, watchItems=persona_view.watch_items,
-        exposureMap=persona_view.exposure_map,
+        exposureMap=persona_view.exposure_map, storyCard=persona_view.story_card,
     ), domain={"groups": persona_view.domain_groups})
     evidence = base.evidence
     cross_links = _cross_shift_links(base.shift.id, rows, [item.id for item in evidence])
@@ -468,7 +480,8 @@ def _snapshot_payload(row: dict, rows: list[dict], persona: str, meta: SnapshotM
 
 
 class RefreshService:
-    def request_refresh(self) -> WorldShiftRefreshRunORM:
+    def request_refresh(self, shift_id: str | None = None) -> WorldShiftRefreshRunORM:
+        """Queue a refresh. With `shift_id`, rebuild only that shift (see `_run`)."""
         with _launch_lock, session_scope() as session:
             active = session.scalars(select(WorldShiftRefreshRunORM).where(
                 WorldShiftRefreshRunORM.status.in_(["queued", "running"])
@@ -495,18 +508,41 @@ class RefreshService:
                 except Exception:
                     current = None
             run = WorldShiftRefreshRunORM(run_id=run_id, status="queued", stage="fetching_gdelt",
-                completed=0, total=10, current_snapshot_id=current)
+                completed=0, total=10, current_snapshot_id=current, shift_id=shift_id)
             session.add(run)
             session.flush()
             session.expunge(run)
         try:
             reset_refresh_executor()
-            _executor.submit(self._run, run_id)
+            _executor.submit(self._run, run_id, shift_id)
         except Exception as exc:
             logger.exception("could not submit World Shift refresh worker: run_id=%s", run_id)
             self._update(run_id, stage="failed", status="failed", error=f"Worker submission failed: {exc}"[:1000])
             raise
         return run
+
+    def current(self) -> WorldShiftRefreshRunORM | None:
+        """The platform's current refresh: the active run if any, else the latest run.
+
+        Refreshes are platform-wide, not per browser tab, so the UI asks the
+        backend rather than remembering a run id. An active run that has made
+        no progress for `_STALE_RUN_AFTER` is reported as failed.
+        """
+        with session_scope() as session:
+            run = session.scalars(select(WorldShiftRefreshRunORM).where(
+                WorldShiftRefreshRunORM.status.in_(["queued", "running"])
+            ).order_by(WorldShiftRefreshRunORM.created_at.desc())).first() or session.scalars(
+                select(WorldShiftRefreshRunORM).order_by(WorldShiftRefreshRunORM.created_at.desc())).first()
+            if run is None:
+                return None
+            if run.status in ("queued", "running"):
+                heartbeat = run.updated_at or run.created_at
+                if datetime.now(timezone.utc) - heartbeat.replace(tzinfo=timezone.utc) > _STALE_RUN_AFTER:
+                    session.expunge(run)
+                    run.status, run.stage, run.error = "failed", "failed", "Refresh stalled with no progress"
+                    return run
+            session.expunge(run)
+            return run
 
     def get(self, run_id: str) -> WorldShiftRefreshRunORM:
         with session_scope() as session:
@@ -529,7 +565,15 @@ class RefreshService:
                     setattr(run, key, value)
                 run.updated_at = datetime.now(timezone.utc)
 
-    def _run(self, run_id: str) -> None:
+    def _run(self, run_id: str, only_shift: str | None = None) -> None:
+        """Build and publish a snapshot.
+
+        `only_shift` is the custom refresh: only that shift is regenerated. It
+        still applies the live GDELT overlay (when enabled) so that shift gets
+        fresh evidence, bypasses the AI cache so edited prompts take effect,
+        and carries every other shift over unchanged from the ACTIVE snapshot
+        so the published snapshot is still complete.
+        """
         snapshot_id = "snap_" + uuid.uuid4().hex[:20]
         try:
             # Keep API reads cache-first; live ingestion is bounded to the worker
@@ -544,20 +588,25 @@ class RefreshService:
             rows = rows[:settings.world_shift_refresh_max_shifts]
             if not rows:
                 raise RuntimeError("No latest GDELT World Shifts are available")
+            # `rows` stays the full ranked list (related shifts and cross-shift
+            # links are computed from it); `targets` is what gets regenerated.
+            targets = [(rank, row) for rank, row in enumerate(rows, 1) if not only_shift or _slug(str(row["topic"])) == only_shift]
+            if not targets:
+                raise RuntimeError(f"World Shift {only_shift!r} is not in the current ranked set")
             date = datetime.fromisoformat(str(rows[0]["date"])[:10]).replace(tzinfo=timezone.utc)
             _, web_research_enabled, web_results_per_shift = get_runtime_values()
-            total = len(rows) * (5 if web_research_enabled else 4) + 4
+            total = len(targets) * (5 if web_research_enabled else 4) + 4
             self._update(run_id, stage="normalizing", completed=1, total=total,
                 window_start=date, window_end=date + timedelta(days=1),
-                records_fetched=sum(int(r.get("evidence_article_count", 0)) for r in rows))
-            generator = WorldShiftGenerationService()
+                records_fetched=sum(int(r.get("evidence_article_count", 0)) for _, r in targets))
+            generator = WorldShiftGenerationService(bypass_cache=bool(only_shift))
             researcher = WorldShiftWebResearchService()
             meta = SnapshotMeta(snapshotId=snapshot_id, generatedAt=datetime.now(timezone.utc).isoformat(),
                                 validUntil=(datetime.now(timezone.utc) + timedelta(days=1)).isoformat())
             built: list[WorldShiftSnapshotORM] = []
             completed = 2
             with session_scope() as session:
-                for rank, row in enumerate(rows, 1):
+                for rank, row in targets:
                     shift_id = _slug(str(row["topic"]))
                     self._update(run_id, stage="building_evidence", completed=completed)
                     # Publisher metadata is best-effort enrichment, fetched here
@@ -684,13 +733,15 @@ class RefreshService:
                                 valid_until=datetime.now(timezone.utc) + timedelta(days=1)))
                         completed = max(completed, 2 + rank * 4)
                         self._update(run_id, stage="fallback_published", completed=completed)
+                if only_shift:
+                    built.extend(_carry_over_active(session, snapshot_id, only_shift, meta))
                 session.add_all(built)
             self._update(run_id, stage="validating", completed=completed,
                          ai_generations_attempted=generator.attempted, ai_generations_reused=generator.reused,
                          validation_failures=generator.validation_failures,
-                         shifts_generated=len(rows), records_deduplicated=sum(
+                         shifts_generated=len(targets), records_deduplicated=sum(
                              max(0, len(json.loads(r.get("representative_evidence") or "[]")[:10]) - len(_artifact_evidence(r, enrich=False)))
-                             for r in rows
+                             for _, r in targets
                          ))
             self._update(run_id, stage="publishing", completed=total - 1)
             promote_snapshot(snapshot_id)
@@ -701,6 +752,31 @@ class RefreshService:
                 session.execute(update(WorldShiftSnapshotORM).where(
                     WorldShiftSnapshotORM.snapshot_id == snapshot_id).values(lifecycle="FAILED"))
             self._update(run_id, stage="failed", status="failed", error=str(exc)[:1000])
+
+
+def _carry_over_active(session, snapshot_id: str, regenerated: str, meta: SnapshotMeta) -> list[WorldShiftSnapshotORM]:
+    """Copy every other shift's ACTIVE rows into the new snapshot, unchanged.
+
+    Only `snapshotId` is rewritten, so the reader's snapshot check passes; the
+    content and its own generatedAt are left as they were.
+    """
+    carried = []
+    for old in session.scalars(select(WorldShiftSnapshotORM).where(
+        WorldShiftSnapshotORM.lifecycle == "ACTIVE", WorldShiftSnapshotORM.shift_id != regenerated,
+    )):
+        carried.append(WorldShiftSnapshotORM(
+            snapshot_id=snapshot_id, shift_id=old.shift_id, persona=old.persona, lifecycle="BUILDING",
+            rank=old.rank, payload={**old.payload, "snapshotId": snapshot_id},
+            generation_run_id=old.generation_run_id, generated_at=old.generated_at, valid_until=old.valid_until,
+        ))
+    return carried
+
+
+def known_shift_ids() -> set[str]:
+    """Shift ids a custom refresh may target: those in the ACTIVE snapshot."""
+    with session_scope() as session:
+        return set(session.scalars(select(WorldShiftSnapshotORM.shift_id).where(
+            WorldShiftSnapshotORM.lifecycle == "ACTIVE").distinct()))
 
 
 refresh_service = RefreshService()
@@ -726,4 +802,5 @@ def refresh_status_dict(run: WorldShiftRefreshRunORM) -> dict:
     return {"runId": run.run_id, "status": run.status, "stage": run.stage,
             "progress": {"completed": run.completed, "total": run.total},
             "currentSnapshotId": run.current_snapshot_id, "newSnapshotId": run.new_snapshot_id,
-            "error": run.error}
+            "shiftId": run.shift_id, "error": run.error,
+            "updatedAt": (run.updated_at or run.created_at).isoformat() if (run.updated_at or run.created_at) else None}

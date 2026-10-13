@@ -173,11 +173,11 @@ button, a { transition: color .16s ease, background-color .16s ease, border-colo
 .brief-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px hsl(var(--hue) 70% 40% / .3); }
 .brief-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; transition: opacity .18s; }
 .brief-card:hover img { opacity: .9; }
-.brief-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 28%, hsl(var(--hue) 55% 30% / .5) 62%, hsl(var(--hue) 60% 22% / .8) 100%); }
-.brief-body { position: relative; z-index: 1; padding: 10px 14px 12px; }
-.brief-meta { display: flex; justify-content: space-between; margin: 0 0 4px; font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: .14em; color: rgba(255, 255, 255, .72); }
+.brief-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 20%, hsl(var(--hue) 50% 10% / .55) 48%, hsl(var(--hue) 55% 7% / .92) 78%, hsl(var(--hue) 60% 5% / .97) 100%); }
+.brief-body { position: relative; z-index: 1; padding: 10px 14px 12px; text-shadow: 0 1px 3px rgba(0, 0, 0, .75); }
+.brief-meta { display: flex; justify-content: space-between; margin: 0 0 4px; font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: .14em; color: rgba(255, 255, 255, .85); }
 .brief-card h3 { margin: 0 0 4px; font-size: clamp(14px, 1.9vh, 17px); font-weight: 650; line-height: 1.2; }
-.brief-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin: 0; overflow: hidden; font-size: clamp(11.5px, 1.6vh, 13px); line-height: 1.4; color: rgba(255, 255, 255, .78); }
+.brief-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin: 0; overflow: hidden; font-size: clamp(11.5px, 1.6vh, 13px); line-height: 1.4; color: rgba(255, 255, 255, .92); }
 .brief-skeleton { height: 34px; border-radius: 4px; background: rgba(255, 255, 255, .08); }
 @media (max-width: 900px) { .landing-briefs { position: relative; top: auto; bottom: auto; right: auto; width: auto; overflow: visible; margin: 48px clamp(24px, 4vw, 78px) 70px; } .brief-card { grid-column: span 6 !important; } }
 @media (max-width: 640px) { .brief-card { grid-column: span 12 !important; min-height: 300px; } }

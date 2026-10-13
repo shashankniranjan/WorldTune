@@ -52,7 +52,7 @@ from app.services.world_shift_contract import (
     get_contract_shift,
     list_contract_shifts,
 )
-from app.services.world_shift_refresh import refresh_service, refresh_status_dict
+from app.services.world_shift_refresh import known_shift_ids, refresh_service, refresh_status_dict
 from app.services.world_shift_runtime import get_refresh_configuration, update_refresh_configuration
 
 router = APIRouter()
@@ -84,6 +84,22 @@ def contract_world_shifts(limit: int = Query(20, ge=1, le=100)) -> WorldShiftLis
 def refresh_world_shifts() -> RefreshStatus:
     """Queue a refresh; duplicate active requests reuse the existing run."""
     return RefreshStatus.model_validate(refresh_status_dict(refresh_service.request_refresh()))
+
+
+@router.post("/world-shifts/{shift_id}/refresh", response_model=RefreshStatus, tags=["world-state"])
+def refresh_one_world_shift(shift_id: str) -> RefreshStatus:
+    """Custom refresh: regenerate a single shift (fresh AI, no cache); others are kept as they are."""
+    shift_id = sanitize_query(shift_id, max_length=120)
+    if shift_id not in known_shift_ids():
+        raise HTTPException(status_code=404, detail="World Shift not found")
+    return RefreshStatus.model_validate(refresh_status_dict(refresh_service.request_refresh(shift_id)))
+
+
+@router.get("/world-shifts/refresh/current", response_model=RefreshStatus | None, tags=["world-state"])
+def world_shift_refresh_current() -> RefreshStatus | None:
+    """The platform's active (or most recent) refresh, so every page and tab shows the same progress."""
+    run = refresh_service.current()
+    return RefreshStatus.model_validate(refresh_status_dict(run)) if run else None
 
 
 @router.get("/world-shifts/refresh/{run_id}", response_model=RefreshStatus, tags=["world-state"])

@@ -155,6 +155,18 @@ class ExposureItem(ContractModel):
     evidence_class: Literal["reasoned"] = Field(default="reasoned", alias="evidenceClass")
 
 
+class StoryCard(ContractModel):
+    """One of the four overview cards, written to answer that card's question.
+
+    key: happened = what changed, why = what set it off, you = what it changes
+    for this persona, next = most likely next development.
+    """
+    key: Literal["happened", "why", "you", "next"]
+    headline: str = Field(description="Plain-English claim that stands alone. Max 70 characters. No trailing clause.")
+    body: str = Field(description="Max 2 short sentences, max 220 characters. Answers only this card's question.")
+    evidence_ids: list[str] = Field(alias="evidenceIds", min_length=1)
+
+
 class Overview(ContractModel):
     what_happened: str = Field(alias="whatHappened")
     why_it_matters: str = Field(alias="whyItMatters")
@@ -171,6 +183,7 @@ class Overview(ContractModel):
     timeline: list[TimelineEvent] = Field(default_factory=list)
     actors: list[ActorBrief] = Field(default_factory=list)
     facts_and_figures: list[FactFigure] = Field(default_factory=list, alias="factsAndFigures")
+    story_cards: list[StoryCard] = Field(default_factory=list, alias="storyCards")
     # Section headings travel with the content so a heading can never describe
     # a different shift than the text beneath it. Optional: clients keep their
     # own defaults for snapshots that do not carry them.
@@ -284,6 +297,7 @@ class Impact(ContractModel):
     exposure_blurb: str | None = Field(default=None, alias="exposureBlurb")
     lens_title: str | None = Field(default=None, alias="lensTitle")
     lens_blurb: str | None = Field(default=None, alias="lensBlurb")
+    story_card: StoryCard | None = Field(default=None, alias="storyCard")
 
 
 class DomainEntity(ContractModel):
@@ -430,6 +444,7 @@ class WorldShiftSynthesis(ContractModel):
     timeline: list[TimelineEvent] = Field(default_factory=list)
     actors: list[ActorBrief] = Field(default_factory=list)
     facts_and_figures: list[FactFigure] = Field(default_factory=list, alias="factsAndFigures")
+    story_cards: list[StoryCard] = Field(default_factory=list, alias="storyCards")
 
 
 class PersonaSynthesis(ContractModel):
@@ -442,6 +457,7 @@ class PersonaSynthesis(ContractModel):
     watch_items: list[ImpactItem] = Field(alias="watchItems")
     domain_groups: list[DomainGroup] = Field(alias="domainGroups")
     exposure_map: list[ExposureItem] = Field(default_factory=list, alias="exposureMap")
+    story_card: StoryCard | None = Field(default=None, alias="storyCard")
 
 
 class RefreshProgress(ContractModel):
@@ -456,7 +472,9 @@ class RefreshStatus(ContractModel):
     progress: RefreshProgress
     current_snapshot_id: str | None = Field(default=None, alias="currentSnapshotId")
     new_snapshot_id: str | None = Field(default=None, alias="newSnapshotId")
+    shift_id: str | None = Field(default=None, alias="shiftId")
     error: str | None = None
+    updated_at: str | None = Field(default=None, alias="updatedAt")
 
 
 class RefreshConfiguration(ContractModel):

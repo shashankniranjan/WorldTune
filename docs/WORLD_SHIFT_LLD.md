@@ -527,7 +527,7 @@ network, no model call, no database write.
 **Rebuild the source artifact** (after new GDELT data, ~7 min):
 
 ```bash
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-BE
+cd <repo-root>
 .venv/bin/python scripts/build_world_shifts.py        # ranking
 .venv/bin/python scripts/build_shift_intelligence.py  # briefing
 ```

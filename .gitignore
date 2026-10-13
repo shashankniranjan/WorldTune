@@ -19,6 +19,8 @@ htmlcov/
 venv/
 
 # OS/editor
+.idea/
+.vscode/
 .DS_Store
 
 # worldtune-engine.sh runtime state (PIDs, logs)

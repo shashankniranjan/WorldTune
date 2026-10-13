@@ -165,7 +165,10 @@ setup_frontend() {
   want="$(hash_of "$FE_DIR/package.json" "$FE_DIR/pnpm-lock.yaml")"
   if [ ! -d "$FE_DIR/node_modules" ] || [ "$(cat "$have_file" 2>/dev/null || true)" != "$want" ]; then
     say "Installing frontend dependencies (first run takes a minute or two) ..."
-    ( cd "$FE_DIR" && "${PNPM[@]}" install --frozen-lockfile ) >"$RUN_DIR/frontend-install.log" 2>&1 \
+    # --force avoids pnpm's interactive prompt when the existing modules
+    # directory was created by a different pnpm version. Output is redirected
+    # to a log here, so that prompt would otherwise leave startup waiting forever.
+    ( cd "$FE_DIR" && "${PNPM[@]}" install --frozen-lockfile --force ) >"$RUN_DIR/frontend-install.log" 2>&1 \
       || { tail -20 "$RUN_DIR/frontend-install.log" >&2; die "Frontend install failed (full log: $RUN_DIR/frontend-install.log)."; }
     echo "$want" > "$have_file"
   fi

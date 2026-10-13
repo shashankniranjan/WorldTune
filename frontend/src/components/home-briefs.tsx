@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
 import { useWorldShift } from "@/hooks/useWorldShift";
 import { useWorldShifts } from "@/hooks/useWorldShifts";
 import type { WorldShiftListItem } from "@/types/worldShift";
@@ -20,9 +21,13 @@ function ago(iso: string) {
 function BriefCard({ shift, index, span, snapshotId }: { shift: WorldShiftListItem; index: number; span: number; snapshotId: string }) {
   const { data } = useWorldShift(shift.id, "tech", snapshotId);
   const brief = data?.shift.overview.contextBrief?.latest ?? data?.shift.overview.whatHappened ?? "";
-  const image = data ? [...data.evidence].reverse().find((item) => item.imageUrl)?.imageUrl : null;
+  const images = data ? [...new Set([...data.evidence].reverse().map((item) => item.imageUrl).filter((url): url is string => !!url))] : [];
+  // Source images often 404 or block hotlinking; fall through to the next
+  // candidate instead of showing the browser's broken-image icon.
+  const [failed, setFailed] = useState(0);
+  const image = images[failed];
   return <Link href={`/world-shifts/${shift.id}?persona=tech&tab=overview`} className="brief-card" style={{ gridColumn: `span ${span}`, "--hue": HUES[index % HUES.length] } as React.CSSProperties}>
-    {image && <img src={image} alt="" loading="lazy" referrerPolicy="no-referrer" />}
+    {image && <img key={image} src={image} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed((n) => n + 1)} onLoad={(e) => { if (e.currentTarget.naturalWidth < 2) setFailed((n) => n + 1); }} />}
     <div className="brief-body">
       <p className="brief-meta"><span>{data ? `${data.evidence.length} ARTICLES` : "…"}</span>{data && <span>{ago(data.generatedAt)}</span>}</p>
       <h3>{shift.title}</h3>

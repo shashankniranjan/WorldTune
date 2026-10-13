@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     )
     llm_base_url: str = "https://openrouter.ai/api/v1"
     llm_model: str = "google/gemini-2.5-flash"
-    world_shift_prompt_version: str = "world-shift-v4-full-briefings"
+    world_shift_prompt_version: str = "world-shift-v5-plain-cards"
     world_shift_schema_version: str = "2.1"
     world_shift_refresh_max_shifts: int = 20
     world_shift_ai_enabled: bool = True

@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useRouter, useSearchParams } from "next/navigation";
-import { use, useState } from "react";
+import { use, useCallback, useState } from "react";
 import { AppHeader, LeftSidebar, RightSidebar, ShiftTabs, WorldShiftStrip } from "@/components/layout";
 import { ErrorState, LoadingSkeleton } from "@/components/common";
 import { DomainRenderer, EvidenceRenderer, ForecastRenderer, ImpactRenderer, OverviewRenderer, RelationshipRenderer } from "@/components/renderers";
@@ -12,15 +12,19 @@ import { SnapshotMismatchError } from "@/api/worldShifts";
 import type { PersonaId, SemanticTab } from "@/types/worldShift";
 import { InwardStarField } from "@/components/inward-star-field";
 
-const validTabs = new Set<SemanticTab>(["overview", "impact", "domain", "relationships", "forecast", "evidence"]);
+const validTabs = new Set<SemanticTab>(["overview", "impact", "relationships", "forecast", "evidence"]);
 
 export default function WorldShiftPage({ params }: { params: Promise<{ shiftId: string }> }) {
   const [evidenceIds, setEvidenceIds] = useState<string[]>([]);
+  const [sectionTab, setSectionTab] = useState<SemanticTab | null>(null);
+  const onSection = useCallback((next: SemanticTab | null) => setSectionTab(next), []);
   const route = useRouter();
   const search = useSearchParams();
   const { shiftId } = use(params);
   const persona = (search.get("persona") === "finance" ? "finance" : "tech") as PersonaId;
-  const tab = validTabs.has(search.get("tab") as SemanticTab) ? search.get("tab") as SemanticTab : "overview";
+  // "domain" (Your Lens) was retired; old links land on the impact tab.
+  const rawTab = search.get("tab") === "domain" ? "impact" : search.get("tab");
+  const tab = validTabs.has(rawTab as SemanticTab) ? rawTab as SemanticTab : "overview";
   const list = useWorldShifts();
   const world = useWorldShift(shiftId, persona, list.data?.snapshotId);
   const changeTab = (next: SemanticTab, preserveEvidence = false) => {
@@ -34,8 +38,8 @@ export default function WorldShiftPage({ params }: { params: Promise<{ shiftId: 
   if (!world.data) return null;
   const data = world.data;
   const showEvidence = (ids: string[]) => { setEvidenceIds(ids); changeTab("evidence", true); };
-  const content = tab === "overview" ? <OverviewRenderer data={data} onEvidence={showEvidence} /> : tab === "impact" ? <ImpactRenderer data={data} onEvidence={showEvidence} /> : tab === "domain" ? <DomainRenderer data={data} onEvidence={showEvidence} /> : tab === "relationships" ? <RelationshipRenderer relationships={data.relationships} persona={persona} onEvidence={showEvidence} /> : tab === "forecast" ? <ForecastRenderer data={data} onEvidence={showEvidence} /> : <EvidenceRenderer evidence={data.evidence} activeIds={evidenceIds} onClear={() => setEvidenceIds([])} />;
+  const content = tab === "overview" ? <OverviewRenderer data={data} onEvidence={showEvidence} onSection={onSection} /> : tab === "impact" ? <ImpactRenderer data={data} onEvidence={showEvidence} /> : tab === "domain" ? <DomainRenderer data={data} onEvidence={showEvidence} /> : tab === "relationships" ? <RelationshipRenderer relationships={data.relationships} persona={persona} onEvidence={showEvidence} /> : tab === "forecast" ? <ForecastRenderer data={data} onEvidence={showEvidence} /> : <EvidenceRenderer evidence={data.evidence} activeIds={evidenceIds} onClear={() => setEvidenceIds([])} />;
   // Best-available lead image: whichever evidence record happens to carry
   // one (GDELT socialimage, or a scraped og:image -- see world_shift_refresh.py).
-  return <><InwardStarField className="briefing-star-field" density={130} velocity={0.95} /><AppHeader /><WorldShiftStrip title={data.shift.title} strength={data.shift.signalStrength} snapshotId={data.snapshotId} /><main className="news-shell mx-auto grid max-w-[1540px] gap-10 px-5 py-8 sm:px-8 xl:grid-cols-[210px_minmax(0,1fr)_270px]"><LeftSidebar shifts={list.data.entries} currentId={shiftId} persona={persona} tab={tab} /><section className="order-1 min-w-0 xl:order-none"><ShiftTabs persona={persona} selected={tab} onTab={changeTab} /><div className="pt-7">{content}</div><details className="news-settings"><summary>Update frequency and research settings</summary><RefreshControl generatedAt={data.generatedAt} /></details></section><RightSidebar data={data} tab={tab} /></main></>;
+  return <><InwardStarField className="briefing-star-field" density={130} velocity={0.95} /><AppHeader /><WorldShiftStrip title={data.shift.title} strength={data.shift.signalStrength} snapshotId={data.snapshotId} /><main className="news-shell mx-auto grid max-w-[1540px] gap-10 px-5 py-8 sm:px-8 xl:grid-cols-[210px_minmax(0,1fr)_270px]"><LeftSidebar shifts={list.data.entries} currentId={shiftId} persona={persona} tab={tab} /><section className="order-1 min-w-0 xl:order-none"><ShiftTabs persona={persona} selected={tab === "overview" && sectionTab ? sectionTab : tab} onTab={changeTab} /><div className="pt-7">{content}</div><details className="news-settings"><summary>Update frequency and research settings</summary><RefreshControl generatedAt={data.generatedAt} shiftId={shiftId} shiftTitle={data.shift.title} snapshotId={data.snapshotId} /></details></section><RightSidebar data={data} tab={tab} /></main></>;
 }

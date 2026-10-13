@@ -1,0 +1,233 @@
+/* The World Shift detail is a reading surface. Keep the stronger visual effects on the landing page. */
+body:has(.news-shell) { background: #f8f7f4; color: #20252b; }
+body:has(.news-shell)::before { display: none; }
+.news-shell { background: #f8f7f4; color: #20252b; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding-top: 36px; }
+.news-shell .card { border: 1px solid #dcdedc; border-radius: 4px; background: #fff; padding: 20px; box-shadow: none; }
+.news-shell .muted { color: #555e66; }
+.news-shell .eyebrow { color: #65727b; letter-spacing: .03em; text-transform: none; font-size: 12px; }
+.news-shell .text-slate-100, .news-shell .text-slate-200, .news-shell .text-white { color: #252b31; }
+.news-shell .text-slate-300, .news-shell .text-slate-400 { color: #57616a; }
+.news-shell .text-slate-500 { color: #68727a; }
+.news-shell .text-sky-100, .news-shell .text-sky-200, .news-shell .text-sky-300, .news-shell .text-sky-400 { color: #176078; }
+.news-shell .text-violet-200, .news-shell .text-violet-300, .news-shell .text-fuchsia-200, .news-shell .text-fuchsia-300 { color: #6e4a76; }
+.news-shell .text-emerald-300 { color: #316d56; }
+.news-shell .text-rose-300 { color: #9a4c4d; }
+.news-shell .text-amber-300 { color: #92662f; }
+.news-shell .bg-fuchsia-950\/20, .news-shell .bg-sky-950\/40, .news-shell .bg-slate-900 { background: #f4f3f0; }
+.news-shell .border-slate-700, .news-shell .border-fuchsia-700\/50, .news-shell .border-fuchsia-800\/40 { border-color: #d9dcda; }
+.news-shell a:focus-visible, .news-shell button:focus-visible, .news-shell summary:focus-visible, .news-shell [role="tabpanel"]:focus-visible { outline: 2px solid #176078; outline-offset: 2px; }
+
+body:has(.news-shell) .news-masthead { min-height: 66px; border-color: #dcdfdd; background: #fff; }
+body:has(.news-shell) .news-masthead > p { color: #555e66; font-size: 14px; }
+body:has(.news-shell) .news-masthead > span { color: #788188; letter-spacing: .06em; }
+body:has(.news-shell) .wordmark span:first-child { color: #22272c; }
+body:has(.news-shell) .wordmark span:last-child { background: none; color: #176078; }
+
+.news-article-header { padding-top: 2px; }
+.news-article-intro { border-bottom: 0; padding-bottom: 0; }
+.news-meta-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 22px; }
+.news-meta-row .news-kicker { margin: 0; }
+.news-meta-row time { color: #69727a; font-size: 12px; }
+.news-shell .news-kicker, .news-shell .news-section-label { color: #53646d; font-size: 12px; font-weight: 650; letter-spacing: .02em; text-transform: none; }
+.news-shell .news-section-label { margin-bottom: 12px; }
+.news-shell .news-article-header h1 { max-width: 900px; margin-top: 17px; color: #20252b; font-size: clamp(40px, 4.5vw, 62px); line-height: 1.07; letter-spacing: -.04em; }
+.news-shell .news-deck { display: -webkit-box; max-width: 760px; margin-top: 17px; overflow: hidden; color: #4e5962; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: clamp(16px, 1.35vw, 19px); line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.news-meta-row [class*="bg-slate"], .news-meta-row [class*="bg-rose"], .news-meta-row [class*="bg-emerald"], .news-meta-row [class*="bg-amber"] { border: 1px solid #d8dedc; border-radius: 2px; background: #f0f2f0; color: #53646d; }
+
+.analysis-navigation { position: sticky; top: 0; z-index: 30; margin: 27px 0 27px; border-top: 1px solid #d8ddda; border-bottom: 1px solid #cbd2d0; background: #f8f7f4; }
+.analysis-tab-list { display: flex; flex-wrap: nowrap; gap: 24px; overflow-x: auto; scrollbar-width: none; }
+.analysis-tab-list::-webkit-scrollbar { display: none; }
+.analysis-tab-list .tab { flex: 0 0 auto; min-height: 46px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 1px; color: #657078; font-size: 13px; font-weight: 550; white-space: nowrap; }
+.analysis-tab-list .tab:hover { color: #176078; }
+.analysis-tab-list .tab[data-active="true"] { border-bottom-color: #176078; color: #143f4d; background: transparent; font-weight: 700; }
+
+.news-analysis-content { padding-top: 26px; }
+
+.news-personas { display: flex; gap: 22px; border-bottom: 1px solid #d7dcd9; }
+.news-personas a { border: 0; border-bottom: 2px solid transparent; padding: 10px 0; color: #69747b; font-size: 12px; font-weight: 550; }
+.news-personas a:hover { color: #176078; }
+.news-personas a[data-current="true"] { border-color: #176078; color: #1f4653; }
+.mobile-lens-switch { display: none; }
+.news-left-rail .news-section-label, .news-right-rail .news-section-label { margin-bottom: 10px; }
+.news-topic-list { border-top: 1px solid #aeb8b9; }
+.news-topic-list a { grid-template-columns: 22px 1fr; gap: 7px; border-color: #e2e4e1; padding: 11px 6px; color: #5d6971; }
+.news-topic-list a span { color: #8a9499; }
+.news-topic-list a strong { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; font-weight: 500; line-height: 1.35; }
+.news-topic-list a:hover, .news-topic-list a[data-current="true"] { color: #20282d; }
+.news-topic-list a[data-current="true"] { border-left-color: #176078; background: #ebefed; }
+.news-right-rail { border-left: 1px solid #e0e3e0; padding-left: 21px; }
+.news-related-reporting a, .news-continue a { border-color: #dde1de; }
+.news-related-reporting span { color: #79858a; letter-spacing: .02em; }
+.news-related-reporting strong, .news-continue strong { color: #38444a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; font-weight: 550; line-height: 1.45; }
+.news-related-reporting a:hover strong { color: #176078; }
+.news-continue { border-color: #cdd4d1; }
+.news-continue a { color: #6b787e; }
+.news-continue small { color: #79858a; }
+
+.editorial-story { color: #343c42; }
+.editorial-story p { font-family: Georgia, "Times New Roman", serif; font-size: 16px; line-height: 1.68; }
+.editorial-story h2 { color: #252b31; font-size: 26px; }
+.editorial-story button { color: #176078; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; font-weight: 600; }
+.briefing-facts { gap: 0; margin: 15px 0 22px; border-top: 1px solid #d8ddda; border-bottom: 1px solid #d8ddda; }
+.briefing-facts button, .briefing-facts button:first-child { border: 0; border-radius: 0; padding: 17px 18px; background: transparent; }
+.briefing-facts button:first-child { padding-left: 0; }
+.briefing-facts button + button { border-left: 1px solid #d8ddda; }
+.briefing-facts button:hover { background: #f0f2ef; }
+.briefing-facts strong { color: #252b31; font-size: 27px; }
+.briefing-facts span { color: #426372; font-size: 11px; letter-spacing: 0; text-transform: none; }
+.briefing-facts small { color: #6a7479; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; }
+.news-settings { border-color: #d8ddda; color: #69747b; }
+.news-settings > summary { letter-spacing: 0; text-transform: none; }
+.news-settings[open] > summary { color: #34434b; }
+.briefing-timeline, .briefing-actors { border-color: #d8ddda; }
+.briefing-timeline > div::before { background: #d8ddda; }
+.briefing-timeline article::before { border-color: #f8f7f4; background: #176078; box-shadow: 0 0 0 1px #176078; }
+.briefing-timeline time, .briefing-timeline article > span, .briefing-actors small { color: #6d797e; }
+.briefing-timeline h3, .briefing-actors h3 { color: #293137; }
+.briefing-timeline article p, .briefing-actors article p { color: #535f65; }
+.briefing-actors article { border-color: #d8ddda; }
+.briefing-actors article span, .briefing-method { color: #6e7a7f; }
+
+/* Each analysis view starts with its answer; supporting material stays available on demand. */
+.overview-priority { max-width: 760px; border-bottom: 1px solid #d8ddda; padding: 0 0 24px; }
+.overview-priority h2, .analysis-intro h2, .analysis-group h2 { margin: 0 0 12px; color: #252b31; font-family: Georgia, "Times New Roman", serif; font-size: clamp(25px, 2.4vw, 30px); font-weight: 500; line-height: 1.2; }
+.overview-priority p { color: #394247; font-size: 18px; line-height: 1.6; }
+.overview-priority .space-y-4 > div + div { margin-top: 13px; }
+.overview-priority button, .overview-changes button { margin-top: 5px; }
+.overview-changes { border-top: 0; padding-top: 24px; }
+.overview-changes p { font-size: 16px; }
+.overview-disclosure { max-width: 800px; border-top: 1px solid #d8ddda; }
+.overview-disclosure > summary { display: flex; align-items: center; min-height: 52px; color: #34414a; font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; }
+.overview-disclosure > summary::-webkit-details-marker { display: none; }
+.overview-disclosure > summary::after { content: "+"; margin-left: auto; color: #5c7079; font-size: 20px; font-weight: 400; }
+.overview-disclosure[open] > summary::after { content: "−"; }
+.overview-disclosure-body { display: grid; gap: 24px; padding: 3px 0 26px; }
+.overview-disclosure-body section + section { border-top: 1px solid #e0e3e0; padding-top: 20px; }
+.overview-disclosure-body h3 { margin: 0 0 9px; color: #293137; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 500; }
+.overview-disclosure-body h4 { margin: 0; color: #293137; font-size: 15px; font-weight: 600; }
+.overview-disclosure-body p { margin: 0 0 8px; }
+.overview-disclosure .briefing-timeline { margin: 0; border: 0; padding: 0 0 10px; }
+.overview-disclosure .briefing-actors { margin: 0; border: 0; padding: 0; }
+.overview-disclosure .briefing-actors article { grid-template-columns: 150px 1fr 80px; }
+
+.analysis-story { max-width: 850px; }
+.analysis-intro { max-width: 760px; padding: 2px 0 24px; }
+.analysis-intro p { margin: 0; color: #4d5960; font-size: 16px; line-height: 1.62; }
+.analysis-intro small { display: block; margin-top: 10px; color: #69767c; font-size: 12px; }
+.analysis-intro .news-section-label { margin-bottom: 7px; }
+.analysis-group { margin: 0 0 29px; }
+.analysis-group h2 { margin: 0 0 12px; font-size: 24px; }
+.analysis-list { border-top: 1px solid #cfd6d2; }
+.analysis-item { border-bottom: 1px solid #d8ddda; padding: 16px 0 19px; }
+.analysis-item-meta { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-bottom: 7px; color: #69767b; font-size: 11px; text-transform: capitalize; }
+.analysis-item-meta .provenance-label { font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.analysis-item h3 { margin: 0 0 7px; color: #293137; font-size: 17px; font-weight: 650; line-height: 1.35; }
+.analysis-item h3 small { color: #66727a; font-size: 12px; font-weight: 500; }
+.analysis-item h3 a { color: #176078; }
+.analysis-item p { margin: 0 0 9px; color: #4f5b62; font-size: 14px; line-height: 1.6; }
+.analysis-item button { color: #176078; font-size: 12px; font-weight: 600; }
+.analysis-item-detail { margin-top: 9px; }
+.analysis-item-detail summary { display: flex; align-items: center; min-height: 44px; width: fit-content; color: #51636d; font-size: 12px; cursor: pointer; }
+.analysis-item-detail p { margin: 0 0 8px; font-size: 13px; }
+.analysis-item-detail ol, .analysis-item-detail ul { margin: 4px 0 12px; padding-left: 21px; color: #56636a; font-size: 13px; line-height: 1.6; }
+.analysis-item-detail h4, .scenario-signals h4 { margin: 9px 0 5px; color: #3c484f; font-size: 12px; font-weight: 700; }
+.analysis-item-detail strong { color: #36474e; }
+.lens-caution { margin: 0 0 8px; color: #67757b; font-size: 13px; line-height: 1.55; }
+.analysis-empty-note { max-width: 700px; border-top: 1px solid #d8ddda; padding-top: 16px; color: #66737a; font-size: 14px; line-height: 1.6; }
+.scenario-signals { margin: 12px 0; border-left: 2px solid #b8c7c7; padding-left: 13px; }
+.scenario-signals ul { margin: 0; padding-left: 18px; color: #4f5b62; font-size: 13px; line-height: 1.55; }
+
+.evidence-list-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.evidence-list-heading .news-section-label { margin-bottom: 5px; }
+.evidence-list-heading h2 { margin: 0; color: #262d32; font-family: Georgia, "Times New Roman", serif; font-size: 27px; font-weight: 500; }
+.evidence-list-heading p:last-child { margin: 4px 0 0; color: #6b757b; font-size: 12px; }
+.evidence-clear-filter { flex: 0 0 auto; border: 1px solid #b7c8c9; border-radius: 3px; padding: 8px 11px; color: #176078; font-size: 12px; }
+.source-row { display: grid; grid-template-columns: 98px minmax(0, 1fr); gap: 16px; border-top: 1px solid #d8ddda; padding: 17px 0; background: transparent; }
+.source-row:not(:has(.source-thumbnail)) { grid-template-columns: 1fr; }
+.source-thumbnail { width: 98px; height: 76px; border-radius: 2px; object-fit: cover; }
+.source-row-body { min-width: 0; }
+.source-row-meta { display: flex; flex-wrap: wrap; gap: 4px 11px; color: #6a767d; font-size: 11px; }
+.source-row h3 { margin: 6px 0 0; color: #293137; font-size: 16px; font-weight: 600; line-height: 1.35; }
+.source-excerpt { display: -webkit-box; overflow: hidden; margin: 8px 0 0; color: #5f696f; font-size: 13px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.source-row-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 9px; margin-top: 11px; color: #6a767d; font-size: 11px; text-transform: capitalize; }
+.source-row-actions a { color: #176078; font-weight: 600; text-transform: none; }
+.source-expand, .source-provenance { margin-top: 9px; color: #69757b; font-size: 11px; }
+.source-expand summary, .source-provenance summary { width: fit-content; cursor: pointer; color: #176078; }
+.source-expand p, .source-provenance p { margin: 8px 0; color: #566168; font-size: 12px; line-height: 1.55; }
+.source-provenance div { display: flex; flex-wrap: wrap; gap: 5px; }
+.source-provenance div span { border: 1px solid #d8ddda; border-radius: 2px; padding: 3px 6px; }
+
+@media (max-width: 1279px) {
+  .mobile-lens-switch { display: block; margin-top: 18px; }
+  .mobile-lens-switch .news-personas { max-width: 400px; }
+  .desktop-lens-switch { display: none; }
+  .news-left-rail { border-top: 1px solid #d8ddda; padding-top: 18px; }
+  .news-right-rail { border-left: 0; padding-left: 0; }
+}
+@media (max-width: 760px) {
+  .news-shell { padding-top: 24px; }
+  .news-shell .news-article-header h1 { font-size: clamp(38px, 10vw, 48px); }
+  .news-shell .news-deck { margin-top: 13px; font-size: 16px; -webkit-line-clamp: unset; }
+  .analysis-navigation { margin-top: 19px; margin-bottom: 10px; }
+  .analysis-tab-list { gap: 21px; }
+  .analysis-tab-list .tab { min-height: 45px; font-size: 12px; }
+  .briefing-facts { grid-template-columns: 1fr; }
+  .overview-priority p { font-size: 16px; }
+  .analysis-intro p { font-size: 15px; }
+  .overview-disclosure .briefing-actors article { grid-template-columns: 1fr; }
+  .briefing-facts button, .briefing-facts button:first-child { padding: 14px 0; }
+  .briefing-facts button + button { border: 0; border-top: 1px solid #d8ddda; }
+  .source-row { grid-template-columns: 74px minmax(0, 1fr); gap: 11px; }
+  .source-thumbnail { width: 74px; height: 68px; }
+  .source-row h3 { font-size: 14px; }
+}
+
+/* Keep the topic, interpretation, and supporting detail distinct. */
+.news-shell .news-article-header h1 { font-size: clamp(32px, 3.4vw, 46px); line-height: 1.12; }
+.news-shell .news-deck { display: block; overflow: visible; max-width: 760px; color: #34434a; font-size: clamp(17px, 1.4vw, 20px); }
+.briefing-lens-switch { margin-top: 20px; }
+.briefing-lens-switch .news-section-label { margin: 0; }
+.briefing-lens-switch .news-personas { width: fit-content; gap: 22px; }
+.news-analysis-content { padding-top: 8px; }
+.overview-heading h2 { margin: 0 0 18px; font-size: 25px; line-height: 1.25; }
+.development-row { max-width: 800px; border-top: 1px solid #d8ddda; padding: 20px 0 22px; }
+.development-change .provenance-label, .development-consequence .provenance-label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; color: #586970; }
+.development-change p { margin: 6px 0 7px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 17px; font-weight: 550; line-height: 1.55; }
+.development-consequence { margin-top: 17px; border-left: 2px solid #b8c7c7; padding-left: 16px; }
+.development-consequence h3 { display: inline; margin: 0 12px 0 0; color: #34434a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; font-weight: 650; }
+.development-consequence p { margin: 7px 0; font-size: 16px; }
+.contextual-facts article { border-top: 1px solid #e0e3e0; padding: 15px 0; }
+.contextual-facts p { margin: 0 0 7px; font-size: 15px; }
+.contextual-facts p:first-child { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.shift-browser > summary { min-height: 44px; color: #53646d; font-size: 12px; font-weight: 650; cursor: pointer; }
+.news-continue small { line-height: 1.55; }
+.analysis-navigation[data-more="true"]::after { content: "›"; position: absolute; right: 0; top: 0; display: grid; place-items: center; width: 24px; height: 44px; background: linear-gradient(to right, transparent, #f8f7f4 40%); color: #176078; pointer-events: none; }
+.analysis-tab-list { scroll-padding-inline: 24px; }
+.analysis-tab-list .tab:last-child { margin-right: 24px; }
+.news-settings > p { font-size: 12px; line-height: 1.6; }
+.evidence-dialog { position: fixed; inset: 0; width: min(760px, calc(100vw - 40px)); max-height: calc(100dvh - 48px); margin: auto; padding: 0; border: 1px solid #cbd2d0; border-radius: 6px; color: #20252b; overflow-y: auto; overscroll-behavior: contain; }
+.evidence-dialog::backdrop { background: rgb(20 30 34 / 45%); }
+.evidence-dialog-body { padding: 24px; }
+.evidence-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.evidence-dialog-header h2 { margin: 0; font-family: Georgia, serif; font-size: 25px; }
+.evidence-dialog-header button, .evidence-all { min-height: 44px; padding: 8px 12px; border: 1px solid #b7c8c9; border-radius: 3px; color: #176078; font-size: 13px; }
+.evidence-claim { margin: 0 0 24px; border-left: 2px solid #b8c7c7; padding-left: 15px; font-size: 15px; line-height: 1.6; }
+.evidence-dialog .evidence-clear-filter { display: none; }
+.evidence-all { margin-top: 20px; }
+@media (min-width: 1280px) {
+  .shift-browser > summary { list-style: none; }
+  .shift-browser > summary::-webkit-details-marker { display: none; }
+}
+@media (max-width: 760px) {
+  .news-shell .news-article-header h1 { font-size: 34px; }
+  .development-change p { font-size: 16px; }
+  .evidence-dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); }
+  .evidence-dialog-body { padding: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .news-shell .animate-pulse { animation: none; }
+}
+.development-row button, .overview-story button, .analysis-item button { min-height: 44px; padding: 8px 0; }
+.news-personas a { display: inline-flex; align-items: center; min-height: 44px; }
+.source-row-actions a { display: inline-flex; align-items: center; min-height: 44px; }
+.overview-priority .briefing-data-note { margin-top: 18px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; color: #657078; }

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { Background, Controls, ReactFlow, type Edge, type Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, GitBranch, SearchCheck } from "lucide-react";
+import { getPersonaConfig } from "@/config/personas";
+import { VisualOverview } from "@/components/overview-visual";
 import { DirectionIndicator, EmptyState } from "@/components/common";
-import type { Evidence, ExposureItem, ImpactItem, IntelligencePoint, Relationships, Scenario, WorldShiftSnapshot } from "@/types/worldShift";
+import type { SemanticTab, Evidence, ExposureItem, ImpactItem, IntelligencePoint, Relationships, Scenario, WorldShiftSnapshot } from "@/types/worldShift";
 
 // "reasoned" gets its own tone (fuchsia) plus an explicit "Inference" wording,
 // distinct from the four corpus-grounded classes -- a reader must never
@@ -58,32 +60,8 @@ function ExposureMapSection({ items, persona, headline, blurb, onEvidence }: { i
 }
 function EditorialPoints({ points, fallback, onEvidence }: { points: IntelligencePoint[]; fallback?: string; onEvidence: (ids: string[]) => void }) { if (!points.length) return fallback ? <p>{fallback}</p> : null; return <div className="space-y-4">{points.map((point, index) => <div key={`${point.text}-${index}`}><p>{point.text}</p><EvidenceButton ids={point.evidenceIds} onEvidence={onEvidence} /></div>)}</div>; }
 
-export function OverviewRenderer({ data, onEvidence }: { data: WorldShiftSnapshot; onEvidence: (ids: string[]) => void }) {
-  const o = data.shift.overview;
-  const leadImage = [...data.evidence].reverse().find((item) => item.imageUrl);
-  return <article className="editorial-story">
-    {leadImage?.imageUrl && <figure className="briefing-lead-image"><img src={leadImage.imageUrl} alt={leadImage.title} loading="lazy" referrerPolicy="no-referrer" />{/* An illustration carries its own caption explaining that it depicts the
-      subject rather than a reported event; a publisher image keeps the
-      attribution line the reference shift has always shown. */}
-    <figcaption>{leadImage.type === "illustration" ? `${leadImage.summary ?? leadImage.title} · ${leadImage.source}` : `Latest available source image · ${leadImage.source}`}</figcaption></figure>}
-    {o.contextBrief && <section className="briefing-primer">
-      <p className="news-section-label">World Shift · the consolidated brief</p>
-      <div className="briefing-primer-grid">
-        <div><span>01</span><h2>What this is</h2><p>{o.contextBrief.whatItIs}</p><EvidenceButton ids={o.contextBrief.whatItIsEvidenceIds ?? []} onEvidence={onEvidence} /></div>
-        <div><span>02</span><h2>How it started</h2><p>{o.contextBrief.howItStarted}</p><EvidenceButton ids={o.contextBrief.howItStartedEvidenceIds ?? []} onEvidence={onEvidence} /></div>
-        <div><span>03</span><h2>Latest</h2><p>{o.contextBrief.latest}</p><EvidenceButton ids={o.contextBrief.latestEvidenceIds ?? []} onEvidence={onEvidence} /></div>
-      </div>
-    </section>}
-    {Boolean(o.factsAndFigures?.length) && <section className="briefing-facts">{o.factsAndFigures!.map((fact) => <button key={fact.value + fact.label} onClick={() => onEvidence(fact.evidenceIds)}><strong>{fact.value}</strong><span>{fact.label}</span><small>{fact.context}</small></button>)}</section>}
-    <section className="editorial-lead"><p className="news-section-label">The story in brief</p><EditorialPoints points={o.whatsHappening ?? []} fallback={o.whatHappened} onEvidence={onEvidence} /></section>
-    {Boolean(o.timeline?.length) && <section className="briefing-timeline"><p className="news-section-label">{o.timelineKicker ?? "How the escalation unfolded"}</p><h2>{o.timelineHeading ?? "A dated view of what changed"}</h2><div>{o.timeline!.map((event) => <article key={event.date + event.title}><time>{event.date}</time><span data-status={event.status}>{event.status}</span><h3>{event.title}</h3><p>{event.summary}</p><EvidenceButton ids={event.evidenceIds} onEvidence={onEvidence} /></article>)}</div></section>}
-    <section className="editorial-section"><h2>Why this matters</h2><EditorialPoints points={o.whyItMattersPoints ?? []} fallback={o.whyItMatters} onEvidence={onEvidence} /></section>
-    <div className="editorial-divider"><span>What we know now</span></div>
-    <section className="editorial-columns"><div><h2>Key developments</h2><EditorialPoints points={o.keyDevelopments ?? []} onEvidence={onEvidence} /></div><div><h2>What is driving it</h2><EditorialPoints points={o.drivers ?? []} onEvidence={onEvidence} /></div></section>
-    {Boolean(o.actors?.length) && <section className="briefing-actors"><p className="news-section-label">Who is doing what</p><h2>Actions and stated positions, kept separate</h2><p className="briefing-method">“Claimed” means the statement comes from a party to the conflict. It is attribution, not WorldTune assigning blame.</p>{o.actors!.map((actor) => <article key={actor.name}><div><h3>{actor.name}</h3><span>{actor.role}</span></div><p>{actor.position}</p><div><small data-status={actor.status}>{actor.status}</small><EvidenceButton ids={actor.evidenceIds} onEvidence={onEvidence} /></div></article>)}</section>}
-    <section className="editorial-context"><div><p className="news-section-label">The uncertainty</p><EditorialPoints points={o.contradictions ?? []} onEvidence={onEvidence} /></div><div><p className="news-section-label">What to watch next</p><EditorialPoints points={o.watchNext ?? []} fallback={o.quickTake ?? undefined} onEvidence={onEvidence} /></div></section>
-    <footer className="editorial-themes"><span>In this story</span>{o.themes.map((theme) => <span key={theme}>{theme}</span>)}</footer>
-  </article>;
+export function OverviewRenderer({ data, onEvidence, onSection }: { data: WorldShiftSnapshot; onEvidence: (ids: string[]) => void; onSection?: (tab: SemanticTab | null) => void }) {
+  return <VisualOverview data={data} onEvidence={onEvidence} slots={{ you: { tab: "impact", title: getPersonaConfig(data.persona).tabs.impact, node: <ImpactRenderer data={data} onEvidence={onEvidence} /> }, next: { tab: "forecast", title: getPersonaConfig(data.persona).tabs.forecast, node: <ForecastRenderer data={data} onEvidence={onEvidence} /> } }} onSection={onSection} />;
 }
 
 export function ImpactRenderer({ data, onEvidence }: { data: WorldShiftSnapshot; onEvidence: (ids: string[]) => void }) { const i = data.content.impact; const sections: [string, string, ImpactItem[]][] = [["Direct impacts", "Immediate, evidence-linked implications", i.directImpacts], ["Impact chain", "How the development can transmit into other systems", i.impactChain], ["Second-order effects", "Conditional consequences beyond the first transmission", i.secondOrderEffects], ["Opportunities", "Possible constructive pathways", i.opportunities], ["Risks", "Adverse pathways and uncertainty", i.risks], ["What to watch", "Signals that strengthen or weaken the interpretation", i.watchItems]]; return <div className="space-y-6"><section className="persona-summary" data-persona={data.persona}><p className="news-section-label">{i.kicker ?? (data.persona === "finance" ? "Finance & investing perspective" : "Tech & career perspective")}</p><h2>{i.headline ?? (data.persona === "finance" ? "Read this shift through earnings, costs, orders and country exposure" : "Read this shift through technical problems, capability gaps and innovation")}</h2><p>{i.summary}</p></section><ExposureMapSection items={i.exposureMap ?? []} persona={data.persona} headline={i.exposureHeadline} blurb={i.exposureBlurb} onEvidence={onEvidence} />{sections.map(([title, subtitle, items]) => <section key={title}><div className="mb-2"><h3 className="text-sm font-semibold text-slate-200">{title}</h3><p className="text-xs text-slate-500">{subtitle}</p></div>{items.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{items.map((item, index) => <ClaimCard key={item.id} item={item} order={title === "Impact chain" || title === "Second-order effects" ? index + 1 : undefined} onEvidence={onEvidence} />)}</div> : <EmptyState>No defensible {title.toLowerCase()} in this snapshot.</EmptyState>}</section>)}</div>; }

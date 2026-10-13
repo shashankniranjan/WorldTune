@@ -3,9 +3,9 @@
 ## Goal
 
 Build an evidence-grounded WorldTune backend in
-`/Users/shashankniranjan/IdeaProjects/WorldTune-BE` that satisfies the executable frontend
+`<repo-root>` that satisfies the executable frontend
 contract in
-`/Users/shashankniranjan/IdeaProjects/WorldTune-FE/src/schemas/worldShift.schema.ts`.
+`<repo-root>/frontend/src/schemas/worldShift.schema.ts`.
 
 The implementation must do more than reshape the existing Parquet rows. It must improve the
 underlying evidence, connect corroborated developments, produce useful persona-specific impact
@@ -347,7 +347,7 @@ describe the limitation rather than invent content.
 
 ### Phase 0 - repository and contract hygiene
 
-- Use `/Users/shashankniranjan/IdeaProjects/WorldTune-BE` as the backend path.
+- Use `<repo-root>` as the backend path.
 - Preserve all existing uncommitted retrieval and World Shift work.
 - Decide separately whether to rename the GitHub repository/remote.
 - Fix the frontend ESLint 9 flat configuration.

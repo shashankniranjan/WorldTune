@@ -1,0 +1,45 @@
+/* A briefing index, with real stories in place of decorative signals. */
+body:has(.home-shell) { background: #f8f7f4; color: #20252b; }
+body:has(.home-shell)::before { display: none; }
+.home-shell { min-height: 100svh; background: #f8f7f4; color: #20252b; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.home-shell a:focus-visible { outline: 2px solid #176078; outline-offset: 3px; }
+.home-header { display: flex; align-items: center; justify-content: space-between; min-height: 70px; border-bottom: 1px solid #dce0dc; padding: 0 clamp(20px, 4vw, 64px); background: #fff; }
+.home-brand .wordmark { font-size: 20px; }
+.home-brand .wordmark span:first-child { color: #22272c; }
+.home-brand .wordmark span:last-child { background: none; color: #176078; }
+.home-header > a:last-child { color: #3c5059; font-size: 13px; font-weight: 600; }
+.home-header > a:last-child:hover { color: #176078; }
+.home-container { max-width: 1400px; margin: 0 auto; padding: 60px clamp(20px, 4vw, 64px) 80px; }
+.home-intro { max-width: 740px; margin-bottom: 54px; }
+.home-intro h1 { margin: 0; color: #20252b; font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 5vw, 66px); font-weight: 500; letter-spacing: -.045em; line-height: 1.08; }
+.home-intro > p:last-child { max-width: 640px; margin: 18px 0 0; color: #566168; font-size: clamp(16px, 1.5vw, 19px); line-height: 1.6; }
+.home-columns { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr); gap: clamp(48px, 7vw, 110px); align-items: start; }
+.home-feature { border-top: 2px solid #293137; padding-top: 17px; }
+.home-feature-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: #647178; font-size: 12px; }
+.home-feature-meta span { color: #3a505b; font-weight: 700; }
+.home-feature h2 { max-width: 620px; margin: 23px 0 16px; color: #252b31; font-family: Georgia, "Times New Roman", serif; font-size: clamp(30px, 3.2vw, 45px); font-weight: 500; letter-spacing: -.035em; line-height: 1.15; }
+.home-feature p { max-width: 590px; margin: 0; color: #48545c; font-family: Georgia, "Times New Roman", serif; font-size: clamp(17px, 1.45vw, 21px); line-height: 1.55; }
+.home-feature > a { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; margin-top: 20px; border-bottom: 1px solid #176078; color: #176078; font-size: 14px; font-weight: 700; }
+.home-feature > a:hover { color: #0c4559; }
+.home-index { border-top: 1px solid #bfc9c6; scroll-margin-top: 20px; }
+.home-index h2 { margin: 17px 0 10px; color: #303941; font-size: 14px; font-weight: 700; }
+.home-index ol { margin: 0; padding: 0; list-style: none; }
+.home-index li { border-top: 1px solid #dce1dc; }
+.home-index li:first-child { border-top: 0; }
+.home-index li a { display: grid; grid-template-columns: 32px minmax(0, 1fr) 18px; align-items: start; gap: 12px; min-height: 52px; padding: 14px 0; color: #344047; }
+.home-index li a:hover strong { color: #176078; }
+.home-index li a span:first-child { color: #859198; font-size: 12px; }
+.home-index li a strong { font-size: 14px; font-weight: 550; line-height: 1.4; }
+.home-index li a span:last-child { color: #6c7d81; text-align: right; }
+.home-index > p { color: #67747b; font-size: 14px; }
+@media (max-width: 840px) {
+  .home-container { padding-top: 36px; }
+  .home-intro { margin-bottom: 38px; }
+  .home-columns { grid-template-columns: 1fr; gap: 43px; }
+}
+@media (max-width: 600px) {
+  .home-header { min-height: 62px; }
+  .home-container { padding-bottom: 50px; }
+  .home-intro h1 { font-size: clamp(38px, 10vw, 50px); }
+  .home-feature h2 { margin-top: 17px; }
+}

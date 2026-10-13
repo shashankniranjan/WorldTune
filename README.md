@@ -1,23 +1,44 @@
 # WorldTune
 
-WorldTune turns a stream of real-world events (conflict, military
-activity, energy disruption, economic/policy announcements, natural
-disasters) into market-impact predictions: for each event, it finds
-historically similar past events, looks at what actually happened to
-~18 financial instruments afterward, and produces a direction/
-probability/expected-return/confidence-tier prediction for 5 time
-horizons (1h/4h/8h/12h/24h). A background resolver later fills in what
-actually happened, and a scoring layer reports how good the predictions
-really are versus simple baselines.
+**The world, tuned to you.** Thousands of signals. Only a few matter to you.
 
-**WorldTune runs at zero cost, with no API keys and no paid
-subscriptions.** Events come from open public feeds (GDELT, USGS, NASA
-EONET, GDACS), market data from Binance's and Stooq's free public
-endpoints, and event classification from a deterministic rule engine that
-needs no LLM. Everything below the "FREE QUICK START" line works with an
-empty `.env`.
+[![License: MIT](https://img.shields.io/badge/License-MIT-4FE3C1.svg)](LICENSE)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Node 18+](https://img.shields.io/badge/node-18%2B-green.svg)
 
-## Getting started (new teammate)
+![WorldTune landing page](docs/assets/landing.png)
+
+WorldTune is an open-source world-intelligence platform. It reads open news and event
+feeds (GDELT, USGS, NASA EONET, GDACS and more), clusters them into **World Shifts** such
+as *Armed Conflict and Military Escalation*, *AI Infrastructure* or *Inflation and Rates*,
+and turns each shift into an evidence-first briefing tailored to a persona.
+
+## Features
+
+- **World Shifts.** Thousands of articles grouped into a handful of shifts, each with
+  article counts, freshness and a short summary.
+- **Evidence-first briefings.** Every claim links back to the sources it came from, with
+  an overview, market and tech impact, persona lens, relationships, scenarios and evidence.
+- **Persona aware.** The same shift reads differently for different readers (news,
+  markets, work, skills).
+- **Connection explorer.** See how shifts, entities and impact channels relate.
+- **Event-impact prediction engine.** For each event, finds historically similar events,
+  checks what ~18 financial instruments did afterwards, and produces
+  direction / probability / expected-return / confidence predictions over 1h to 24h,
+  scored against simple baselines.
+- **Zero cost by default.** No paid APIs, no subscriptions. An OpenRouter key is optional
+  and only used for AI-written briefings; without it, briefings fall back to
+  deterministic ones.
+
+## How it works
+
+1. **Ingest** open public feeds (news, earthquakes, wildfires, disasters, markets).
+2. **Classify and deduplicate** events with a deterministic rule engine.
+3. **Cluster** articles into World Shifts and build a daily snapshot with evidence.
+4. **Interpret** each shift per persona (optionally with an LLM through OpenRouter).
+5. **Serve** it through a FastAPI backend and a Next.js frontend.
+
+## Getting started
 
 ### Prerequisites (one-time, if missing)
 
@@ -88,7 +109,7 @@ The key lives in `.env` and your shell profile; never commit or share either fil
 
 ### Repository layout
 
-- `frontend/`: Next.js UI
+- `frontend/`: Next.js UI (landing page, briefings, connection explorer)
 - `worldtune/backend/`: FastAPI World Shifts API
 - `src/worldtune/`, `jobs/`, `apps/`: event-impact prediction engine (formerly WorldPulse)
 
@@ -301,3 +322,19 @@ FUSE/network mount, SQLite's file-based rollback journal can surface as
 on every SQLite connection specifically to work around this. On a normal
 local filesystem this has no practical downside for a single-process
 dev/demo database.
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md) before opening a pull request. To report a
+security issue, see [SECURITY.md](SECURITY.md).
+
+## Disclaimer
+
+WorldTune is a research prototype. Its predictions and briefings are generated
+automatically from public sources and may be incomplete or wrong. They are not
+financial, investment or legal advice.
+
+## License
+
+WorldTune is released under the [MIT License](LICENSE).

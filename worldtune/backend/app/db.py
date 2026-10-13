@@ -43,7 +43,27 @@ def init_db(url: str | None = None) -> Engine:
     """Create every table. Idempotent -- safe to call on each boot."""
     engine = get_engine(url)
     Base.metadata.create_all(engine)
+    _add_missing_columns(engine)
     return engine
+
+
+# create_all never alters an existing table. Columns added after a database was
+# first created are listed here so an older worldtune.db keeps working.
+_ADDED_COLUMNS = {"world_shift_refresh_runs": {"shift_id": "VARCHAR"}}
+
+
+def _add_missing_columns(engine: Engine) -> None:
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    for table, columns in _ADDED_COLUMNS.items():
+        if not inspector.has_table(table):
+            continue
+        present = {column["name"] for column in inspector.get_columns(table)}
+        with engine.begin() as connection:
+            for name, ddl in columns.items():
+                if name not in present:
+                    connection.execute(text(f'ALTER TABLE {table} ADD COLUMN {name} {ddl}'))
 
 
 def reset_engine() -> None:

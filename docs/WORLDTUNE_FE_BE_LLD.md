@@ -2,8 +2,8 @@
 
 **Status:** V2 implemented and locally validated  
 **Scope:** Evidence-grounded World Shifts with optional bounded web research  
-**Backend:** `/Users/shashankniranjan/IdeaProjects/WorldTune-BE`  
-**Frontend:** `/Users/shashankniranjan/IdeaProjects/WorldTune-FE`
+**Backend:** `<repo-root>`  
+**Frontend:** `<repo-root>/frontend`
 
 This is the single implementation reference for an AI agent that needs to understand,
 validate, extend, or plan work on WorldTune. It describes the code that exists today, the
@@ -92,12 +92,12 @@ Run the services locally:
 
 ```bash
 # Backend
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-BE
+cd <repo-root>
 PYTHONPATH=worldtune/backend .venv/bin/python -m uvicorn app.main:app \
   --host 127.0.0.1 --port 8090
 
 # Frontend
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-FE
+cd <repo-root>/frontend
 NEXT_PUBLIC_WORLDTUNE_DATA_SOURCE=api \
 NEXT_PUBLIC_WORLDTUNE_API_URL=http://localhost:8090 \
 pnpm dev
@@ -135,7 +135,7 @@ date and signal strength, selects the latest observation date, and composes the 
 The default artifact is:
 
 ```text
-/Users/shashankniranjan/IdeaProjects/WorldTune-BE/
+<repo-root>/
 data/processed/worldtune/world_shifts/gold_world_shifts.parquet
 ```
 
@@ -381,7 +381,7 @@ refresh action rather than silently mixing snapshots.
 ### Backend
 
 ```bash
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-BE
+cd <repo-root>
 ./.venv/bin/python -m pytest -q
 ```
 
@@ -391,7 +391,7 @@ URLs, stale snapshot rejection, and evidence filters.
 ### Frontend
 
 ```bash
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-FE
+cd <repo-root>/frontend
 pnpm typecheck
 pnpm lint
 pnpm build

@@ -8,7 +8,7 @@ Dynamic intelligence presentation layer for versioned `WorldShiftSnapshot` JSON.
 
 The real API adapter is the default. Set `NEXT_PUBLIC_WORLDTUNE_DATA_SOURCE=mock` only for
 isolated UI work. The complete backend/frontend low-level design is documented at
-`/Users/shashankniranjan/IdeaProjects/WorldTune-BE/docs/WORLDTUNE_FE_BE_LLD.md`.
+[`docs/WORLDTUNE_FE_BE_LLD.md`](../docs/WORLDTUNE_FE_BE_LLD.md).
 
 The refresh control in the dashboard is persisted by the backend. It defaults to five minutes
 during validation and can be changed to twelve hours from the UI after sign-off. Bounded web

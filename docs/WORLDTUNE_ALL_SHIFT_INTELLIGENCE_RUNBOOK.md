@@ -23,8 +23,8 @@ The reader should finish a World Shift knowing:
 
 ## Repositories and runtime
 
-- Backend: `/Users/shashankniranjan/IdeaProjects/WorldTune-BE`
-- Frontend: `/Users/shashankniranjan/IdeaProjects/WorldTune-FE`
+- Backend: `<repo-root>`
+- Frontend: `<repo-root>/frontend`
 - Backend API: `http://127.0.0.1:8090`
 - Frontend: `http://127.0.0.1:3000`
 - Backend virtual environment: `WorldTune-BE/.venv`
@@ -306,7 +306,7 @@ If a run was genuinely interrupted, mark only that exact stale run failed before
 Backend:
 
 ```bash
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-BE
+cd <repo-root>
 export PYTHONPATH=worldtune/backend
 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
@@ -314,7 +314,7 @@ export PYTHONPATH=worldtune/backend
 Frontend:
 
 ```bash
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-FE
+cd <repo-root>/frontend
 export NEXT_PUBLIC_WORLDTUNE_DATA_SOURCE=api
 export NEXT_PUBLIC_WORLDTUNE_API_URL=http://localhost:8090
 npm run dev
@@ -329,7 +329,7 @@ Confirm the listeners and health endpoints rather than assuming detached launch 
 Backend:
 
 ```bash
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-BE
+cd <repo-root>
 .venv/bin/python -m pytest -q worldtune/backend/tests
 git diff --check
 ```
@@ -337,7 +337,7 @@ git diff --check
 Frontend:
 
 ```bash
-cd /Users/shashankniranjan/IdeaProjects/WorldTune-FE
+cd <repo-root>/frontend
 npm run build
 git diff --check
 ```
@@ -418,7 +418,7 @@ Fix: base the digest on stable topic/category and evidence identity/content fiel
 
 ```text
 Implement and validate WorldTune all-shift intelligence using the runbook at:
-/Users/shashankniranjan/IdeaProjects/WorldTune-BE/docs/WORLDTUNE_ALL_SHIFT_INTELLIGENCE_RUNBOOK.md
+<repo-root>/docs/WORLDTUNE_ALL_SHIFT_INTELLIGENCE_RUNBOOK.md
 
 Goal:
 Every World Shift must use the same shared news-briefing depth and layout as Armed Conflict and Military Escalation, without copying its facts. Generate one common evidence-grounded story and distinct Finance & Investing and Tech & Career interpretations for every shift.

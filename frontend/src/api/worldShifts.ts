@@ -30,12 +30,19 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function startWorldShiftRefresh(): Promise<RefreshStatus> {
-  return refreshStatusSchema.parse(await fetchJson<unknown>("/world-shifts/refresh", { method: "POST" }));
+/** Omit `shiftId` for the full refresh; pass it to regenerate just that shift. */
+export async function startWorldShiftRefresh(shiftId?: string): Promise<RefreshStatus> {
+  return refreshStatusSchema.parse(await fetchJson<unknown>(shiftId ? `/world-shifts/${encodeURIComponent(shiftId)}/refresh` : "/world-shifts/refresh", { method: "POST" }));
 }
 
 export async function getWorldShiftRefresh(runId: string): Promise<RefreshStatus> {
   return refreshStatusSchema.parse(await fetchJson<unknown>(`/world-shifts/refresh/${encodeURIComponent(runId)}`));
+}
+
+/** The platform's active or most recent refresh, or null if none has ever run. */
+export async function getCurrentWorldShiftRefresh(): Promise<RefreshStatus | null> {
+  const body = await fetchJson<unknown>("/world-shifts/refresh/current");
+  return body ? refreshStatusSchema.parse(body) : null;
 }
 
 export async function getRefreshConfiguration(): Promise<RefreshConfiguration> {
