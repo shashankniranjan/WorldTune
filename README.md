@@ -52,8 +52,8 @@ Nothing else is needed: no pnpm, no virtualenv, no `.env` file.
 ### Run it
 
 ```bash
-git clone https://github.com/shashankniranjan/WorldPulse.git
-cd WorldPulse
+git clone https://github.com/shashankniranjan/WorldTune.git
+cd WorldTune
 ./start-worldtune.sh
 ```
 

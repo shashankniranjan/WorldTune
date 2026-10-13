@@ -5,7 +5,7 @@
 Please do **not** open a public issue for security problems.
 
 Report vulnerabilities privately through GitHub's
-[private vulnerability reporting](https://github.com/shashankniranjan/WorldPulse/security/advisories/new)
+[private vulnerability reporting](https://github.com/shashankniranjan/WorldTune/security/advisories/new)
 for this repository. Include a description, reproduction steps and the impact you
 expect. You should get an acknowledgement within a few days.
 

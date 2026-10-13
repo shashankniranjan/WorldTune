@@ -25,7 +25,7 @@ that do not follow this code, and may temporarily or permanently ban contributor
 for repeated or serious violations.
 
 Report problems to the maintainer through GitHub's
-[private vulnerability reporting](https://github.com/shashankniranjan/WorldPulse/security/advisories/new)
+[private vulnerability reporting](https://github.com/shashankniranjan/WorldTune/security/advisories/new)
 form or by contacting [@shashankniranjan](https://github.com/shashankniranjan) directly.
 
 This code is adapted from the [Contributor Covenant](https://www.contributor-covenant.org/),

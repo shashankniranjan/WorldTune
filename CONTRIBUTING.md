@@ -14,8 +14,8 @@ pull requests are all welcome.
 ## Development setup
 
 ```bash
-git clone https://github.com/shashankniranjan/WorldPulse.git
-cd WorldPulse
+git clone https://github.com/shashankniranjan/WorldTune.git
+cd WorldTune
 ./start-worldtune.sh        # creates .venv, installs deps, starts API + UI
 ./stop-worldtune.sh
 ```
